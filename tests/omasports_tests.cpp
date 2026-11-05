@@ -223,6 +223,9 @@ private slots:
         Theme theme(dir.path());
         QCOMPARE(theme.accent(), QString("#FFD60A"));
         QCOMPARE(theme.accentForeground(), QString("black"));
+        QCOMPARE(theme.background(), QString("#0e0e10"));
+        QCOMPARE(theme.foreground(), QString("#f2f2f4"));
+        QCOMPARE(theme.dark(), true);
     }
 
     void themeReadsAccent()
@@ -233,6 +236,35 @@ private slots:
 
         Theme theme(dir.path());
         QCOMPARE(theme.accent(), QString("#112233"));
+        QCOMPARE(theme.accentForeground(), QString("white"));
+    }
+
+    void themeReadsTheWholePalette()
+    {
+        QTemporaryDir dir;
+        QDir(dir.path()).mkpath("theme");
+        writeFile(dir.path() + "/theme/colors.toml",
+                  "mode = \"light\"\n"
+                  "accent = \"#1e66f5\"\n"
+                  "selection = \"#ccd0da\"\n"
+                  "muted = \"#acb0be\"\n"
+                  "background = \"#eff1f5\"\n"
+                  "dark_background = \"#e3e4e8\"\n"
+                  "darker_background = \"#d7d8dc\"\n"
+                  "lighter_background = \"#dce0e8\"\n"
+                  "foreground = \"#4c4f69\"\n"
+                  "red = \"#d20f39\"\n"
+                  "hyprland_active_border = \"rgba(1ee) rgba(2ee) 45deg\"\n");
+
+        Theme theme(dir.path());
+        QCOMPARE(theme.dark(), false);
+        QCOMPARE(theme.accent(), QString("#1e66f5"));
+        QCOMPARE(theme.background(), QString("#eff1f5"));
+        QCOMPARE(theme.panel(), QString("#e3e4e8"));
+        QCOMPARE(theme.card(), QString("#dce0e8"));
+        QCOMPARE(theme.foreground(), QString("#4c4f69"));
+        QCOMPARE(theme.selection(), QString("#ccd0da"));
+        QCOMPARE(theme.danger(), QString("#d20f39"));
         QCOMPARE(theme.accentForeground(), QString("white"));
     }
 

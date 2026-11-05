@@ -61,16 +61,19 @@ void Theme::refreshRounding() {
     m_roundingTimeout.start();
 }
 
-QString Theme::readAccent(const QString &path) {
+QHash<QString, QString> Theme::readPalette(const QString &path) {
+    QHash<QString, QString> values;
     QFile file(path);
-    if (file.open(QIODevice::ReadOnly)) {
-        const QRegularExpression expression(R"re(^\s*accent\s*=\s*["'](#[0-9a-fA-F]{6})["'])re",
-                                            QRegularExpression::MultilineOption);
-        const auto match = expression.match(QString::fromUtf8(file.readAll()));
-        if (match.hasMatch())
-            return match.captured(1);
+    if (!file.open(QIODevice::ReadOnly))
+        return values;
+    static const QRegularExpression line(R"re(^\s*([a-z_]+)\s*=\s*"([^"]*)"\s*$)re",
+                                         QRegularExpression::MultilineOption);
+    auto matches = line.globalMatch(QString::fromUtf8(file.readAll()));
+    while (matches.hasNext()) {
+        const auto match = matches.next();
+        values.insert(match.captured(1), match.captured(2));
     }
-    return "#FFD60A";
+    return values;
 }
 
 // Black or white, whichever reads on the accent (WCAG relative luminance).
@@ -80,6 +83,19 @@ QString Theme::accentForeground() const {
     const double luminance = .2126 * linear(c.redF()) + .7152 * linear(c.greenF()) + .0722 * linear(c.blueF());
     return luminance > .179 ? "black" : "white";
 }
+
+namespace {
+QString withAlpha(const QString &color, qreal alpha) {
+    QColor value(color);
+    value.setAlphaF(alpha);
+    return value.name(QColor::HexArgb);
+}
+} // namespace
+
+// Secondary text and hairlines derive from the foreground, so they read on
+// both the light and the dark themes.
+QString Theme::mutedForeground() const { return withAlpha(m_foreground, 0.55); }
+QString Theme::line() const { return withAlpha(m_foreground, 0.14); }
 
 void Theme::reload() {
     refreshRounding();
@@ -100,9 +116,36 @@ void Theme::reload() {
         if (QFileInfo::exists(path))
             m_watcher.addPath(path);
 
-    const auto accent = readAccent(m_directory + "/theme/colors.toml");
-    if (accent != m_accent) {
-        m_accent = accent;
+    const QHash<QString, QString> palette = readPalette(m_directory + "/theme/colors.toml");
+    auto color = [&palette](const char *key, const QString &fallback) {
+        const QString value = palette.value(QString::fromLatin1(key));
+        static const QRegularExpression hex("^#[0-9a-fA-F]{6}$");
+        return hex.match(value).hasMatch() ? value : fallback;
+    };
+
+    const QString accent = color("accent", "#FFD60A");
+    const QString background = color("background", "#0e0e10");
+    const QString panel = color("dark_background", "#131316");
+    const QString card = color("lighter_background", "#1a1a1f");
+    const QString foreground = color("foreground", "#f2f2f4");
+    const QString selection = color("selection", "#2a2a31");
+    const QString danger = color("red", "#ff6b6b");
+    const bool dark = palette.value("mode", "dark") != "light";
+
+    // The palette, not just the accent, decides the window, so a theme switch
+    // has to repaint everything.
+    const bool repaint = accent != m_accent || background != m_background
+                      || panel != m_panel || card != m_card
+                      || foreground != m_foreground || selection != m_selection
+                      || danger != m_danger || dark != m_dark;
+    m_accent = accent;
+    m_background = background;
+    m_panel = panel;
+    m_card = card;
+    m_foreground = foreground;
+    m_selection = selection;
+    m_danger = danger;
+    m_dark = dark;
+    if (repaint)
         emit changed();
-    }
 }

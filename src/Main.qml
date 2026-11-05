@@ -12,9 +12,9 @@ ApplicationWindow {
     minimumHeight: 480
     visible: true
     title: "omasports"
-    color: "#0e0e10"
+    color: theme.background
 
-    Material.theme: Material.Dark
+    Material.theme: theme.dark ? Material.Dark : Material.Light
     Material.accent: theme.accent
     Material.roundedScale: theme.radius
 
@@ -116,59 +116,68 @@ ApplicationWindow {
 
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 56
-            color: "#111114"
+            Layout.preferredHeight: 52
+            color: theme.background
 
             Rectangle {
                 anchors.bottom: parent.bottom
                 width: parent.width
                 height: 1
-                color: "#232329"
+                color: theme.line
             }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 18
-                anchors.rightMargin: 14
+                anchors.leftMargin: 16
+                anchors.rightMargin: 12
                 spacing: 8
+
+                LogoMark {
+                    size: 22
+                    Layout.alignment: Qt.AlignVCenter
+                }
 
                 Text {
                     text: "omasports"
-                    color: theme.accent
-                    font.pixelSize: 17
+                    color: theme.foreground
+                    font.pixelSize: 15
                     font.bold: true
-                    font.letterSpacing: 0.3
+                    font.letterSpacing: 0.2
                 }
 
                 Item { Layout.fillWidth: true }
 
-                ActionButton {
-                    text: "‹"
-                    onClicked: backend.previousDay()
+                RowLayout {
+                    spacing: 4
+
+                    ActionButton {
+                        text: "‹"
+                        onClicked: backend.previousDay()
+                    }
+
+                    Text {
+                        Layout.preferredWidth: 152
+                        text: backend.dateLabel
+                        color: theme.foreground
+                        font.pixelSize: 13
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    ActionButton {
+                        text: "›"
+                        onClicked: backend.nextDay()
+                    }
                 }
 
-                Text {
-                    Layout.preferredWidth: 160
-                    text: backend.dateLabel
-                    color: "#e6e6ea"
-                    font.pixelSize: 13
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
                 ActionButton {
-                    text: "›"
-                    onClicked: backend.nextDay()
-                }
-
-                ActionButton {
+                    visible: !backend.isToday
                     text: qsTr("Today")
-                    primary: !backend.isToday
-                    enabled: !backend.isToday
+                    primary: true
                     onClicked: backend.today()
                 }
 
-                Item { Layout.preferredWidth: 8 }
+                Item { Layout.preferredWidth: 6 }
 
                 RowLayout {
                     visible: backend.liveCount > 0
@@ -215,12 +224,6 @@ ApplicationWindow {
                 Layout.fillHeight: true
             }
 
-            Rectangle {
-                Layout.preferredWidth: 1
-                Layout.fillHeight: true
-                color: "#232329"
-            }
-
             Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -229,20 +232,20 @@ ApplicationWindow {
                     anchors.top: parent.top
                     anchors.bottom: parent.bottom
                     anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.topMargin: 22
+                    anchors.topMargin: 24
                     anchors.bottomMargin: 16
-                    width: Math.min(820, parent.width - 40)
-                    spacing: 12
+                    width: Math.min(840, parent.width - 40)
+                    spacing: 14
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 2
+                        spacing: 3
 
                         Text {
                             Layout.fillWidth: true
                             text: backend.league.name || ""
-                            color: "#f2f2f4"
-                            font.pixelSize: 24
+                            color: theme.foreground
+                            font.pixelSize: 26
                             font.bold: true
                             elide: Text.ElideRight
                         }
@@ -256,7 +259,7 @@ ApplicationWindow {
                                        ? backend.league.sportName + "  ·  " + qsTr("%n games", "", count)
                                        : backend.league.sportName
                             }
-                            color: "#77777f"
+                            color: theme.mutedForeground
                             font.pixelSize: 12
                             elide: Text.ElideRight
                         }
@@ -266,17 +269,26 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 32
                         visible: backend.status === "error" && backend.events.length > 0
-                        color: "#2a1414"
+                        color: theme.card
                         radius: Math.min(6, theme.radius)
+                        clip: true
+
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            width: 3
+                            color: theme.danger
+                        }
 
                         Text {
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            anchors.leftMargin: 10
+                            anchors.leftMargin: 12
                             anchors.rightMargin: 10
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("Refresh failed: %1").arg(backend.error)
-                            color: "#f0a0a0"
+                            color: theme.danger
                             font.pixelSize: 11
                             elide: Text.ElideRight
                         }
@@ -294,7 +306,16 @@ ApplicationWindow {
                             spacing: 8
                             model: backend.events
                             boundsBehavior: Flickable.StopAtBounds
-                            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                                contentItem: Rectangle {
+                                    implicitWidth: 4
+                                    radius: 2
+                                    color: theme.foreground
+                                    opacity: 0.22
+                                }
+                            }
 
                             delegate: EventCard {
                                 width: games.width
@@ -315,7 +336,7 @@ ApplicationWindow {
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: qsTr("Loading scores…")
-                                color: "#8a8a93"
+                                color: theme.mutedForeground
                                 font.pixelSize: 12
                             }
                         }
@@ -329,7 +350,7 @@ ApplicationWindow {
                             Text {
                                 Layout.fillWidth: true
                                 text: qsTr("Could not load scores")
-                                color: "#f2f2f4"
+                                color: theme.foreground
                                 font.pixelSize: 16
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
@@ -338,7 +359,7 @@ ApplicationWindow {
                             Text {
                                 Layout.fillWidth: true
                                 text: backend.error
-                                color: "#8a8a93"
+                                color: theme.mutedForeground
                                 font.pixelSize: 11
                                 wrapMode: Text.WordWrap
                                 horizontalAlignment: Text.AlignHCenter
@@ -360,14 +381,14 @@ ApplicationWindow {
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: "—"
-                                color: "#3a3a42"
+                                color: theme.mutedForeground
                                 font.pixelSize: 40
                             }
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: qsTr("No games on this day.")
-                                color: "#8a8a93"
+                                color: theme.mutedForeground
                                 font.pixelSize: 14
                             }
 
@@ -387,13 +408,13 @@ ApplicationWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 30
-            color: "#0c0c0e"
+            color: theme.background
 
             Rectangle {
                 anchors.top: parent.top
                 width: parent.width
                 height: 1
-                color: "#1d1d23"
+                color: theme.line
             }
 
             RowLayout {
@@ -404,25 +425,25 @@ ApplicationWindow {
 
                 Text {
                     text: qsTr("? Help")
-                    color: "#6f6f78"
+                    color: theme.mutedForeground
                     font.pixelSize: 11
                 }
-                Text { text: "·"; color: "#3a3a42"; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
                 Text {
                     text: qsTr("J / K league")
-                    color: "#6f6f78"
+                    color: theme.mutedForeground
                     font.pixelSize: 11
                 }
-                Text { text: "·"; color: "#3a3a42"; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
                 Text {
                     text: qsTr("H / L day")
-                    color: "#6f6f78"
+                    color: theme.mutedForeground
                     font.pixelSize: 11
                 }
-                Text { text: "·"; color: "#3a3a42"; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
                 Text {
                     text: qsTr("R refresh")
-                    color: "#6f6f78"
+                    color: theme.mutedForeground
                     font.pixelSize: 11
                 }
 
@@ -431,13 +452,14 @@ ApplicationWindow {
                 Text {
                     visible: backend.status === "ready" && backend.updatedLabel.length > 0
                     text: qsTr("Updated at %1").arg(backend.updatedLabel)
-                    color: "#6f6f78"
+                    color: theme.mutedForeground
                     font.pixelSize: 11
                 }
 
                 Text {
                     text: "ESPN"
-                    color: "#4a4a52"
+                    color: theme.mutedForeground
+                    opacity: 0.65
                     font.pixelSize: 11
                 }
             }

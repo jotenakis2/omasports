@@ -6,9 +6,13 @@ import QtQuick.Layouts
 Rectangle {
     id: sidebar
 
-    color: "#111114"
+    color: theme.panel
     property string query: ""
     property bool searching: search.activeFocus
+
+    Material.theme: theme.dark ? Material.Dark : Material.Light
+    Material.accent: theme.accent
+    Material.roundedScale: theme.radius
 
     // Every league in the catalog, filtered by the search box. The catalog
     // order is the order they appear in, grouped by sport.
@@ -65,6 +69,14 @@ Rectangle {
 
     Component.onCompleted: scrollToCurrent()
 
+    Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 1
+        color: theme.line
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -72,10 +84,10 @@ Rectangle {
         Text {
             Layout.fillWidth: true
             Layout.leftMargin: 18
-            Layout.topMargin: 16
+            Layout.topMargin: 18
             Layout.bottomMargin: 8
             text: qsTr("Leagues")
-            color: "#77777f"
+            color: theme.mutedForeground
             font.pixelSize: 10
             font.bold: true
             font.capitalization: Font.AllUppercase
@@ -92,8 +104,8 @@ Rectangle {
                 id: search
                 anchors.fill: parent
                 placeholderText: qsTr("Search leagues")
-                placeholderTextColor: "#6f6f78"
-                color: "#f2f2f4"
+                placeholderTextColor: theme.mutedForeground
+                color: theme.foreground
                 font.pixelSize: 13
                 leftPadding: 11
                 rightPadding: 30
@@ -102,9 +114,9 @@ Rectangle {
 
                 background: Rectangle {
                     radius: Math.min(6, theme.radius)
-                    color: "#17171b"
+                    color: theme.card
                     border.width: 1
-                    border.color: search.activeFocus ? theme.accent : "#2a2a31"
+                    border.color: search.activeFocus ? theme.accent : theme.line
                 }
 
                 onTextChanged: sidebar.query = text
@@ -133,12 +145,14 @@ Rectangle {
                 width: 18
                 height: 18
                 radius: Math.min(4, theme.radius)
-                color: "#232329"
+                color: theme.panel
+                border.width: 1
+                border.color: theme.line
 
                 Text {
                     anchors.centerIn: parent
                     text: "/"
-                    color: "#8a8a93"
+                    color: theme.mutedForeground
                     font.pixelSize: 10
                     font.bold: true
                 }
@@ -163,7 +177,16 @@ Rectangle {
             model: sidebar.model
             section.property: "sportName"
             section.criteria: ViewSection.FullString
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
+                contentItem: Rectangle {
+                    implicitWidth: 4
+                    radius: 2
+                    color: theme.foreground
+                    opacity: 0.22
+                }
+            }
 
             section.delegate: Item {
                 width: list.width
@@ -175,7 +198,7 @@ Rectangle {
                     anchors.bottom: parent.bottom
                     anchors.bottomMargin: 2
                     text: section
-                    color: "#77777f"
+                    color: theme.mutedForeground
                     font.pixelSize: 10
                     font.bold: true
                     font.capitalization: Font.AllUppercase
@@ -198,8 +221,8 @@ Rectangle {
                     anchors.leftMargin: 10
                     anchors.rightMargin: 10
                     radius: Math.min(theme.radius, 6)
-                    color: theme.accent
-                    opacity: row.current ? 0.16 : (hover.hovered ? 0.05 : 0)
+                    color: row.current ? theme.selection : theme.card
+                    opacity: row.current ? 1 : (hover.hovered ? 0.7 : 0)
                     Behavior on opacity {
                         NumberAnimation { duration: 90 }
                     }
@@ -223,7 +246,8 @@ Rectangle {
                     anchors.rightMargin: 12
                     anchors.verticalCenter: parent.verticalCenter
                     text: row.modelData.name
-                    color: row.current ? "#ffffff" : "#c9c9cf"
+                    color: theme.foreground
+                    opacity: row.current ? 1 : 0.82
                     font.pixelSize: 13
                     font.bold: row.current
                     elide: Text.ElideRight

@@ -11,11 +11,9 @@ Rectangle {
     readonly property bool live: modelData.state === "in"
     readonly property bool paired: modelData.teams && modelData.teams.length === 2
 
-    implicitHeight: paired ? 88 : 68
+    implicitHeight: paired ? 84 : 68
     radius: theme.radius
-    color: "#17171b"
-    border.width: 1
-    border.color: live ? "#3c3c46" : "#232329"
+    color: theme.card
 
     Rectangle {
         visible: card.live
@@ -32,14 +30,14 @@ Rectangle {
     RowLayout {
         visible: card.paired
         anchors.fill: parent
-        anchors.leftMargin: 16
+        anchors.leftMargin: 18
         anchors.rightMargin: 16
         anchors.topMargin: 10
         anchors.bottomMargin: 10
         spacing: 14
 
         Item {
-            Layout.preferredWidth: 76
+            Layout.preferredWidth: 78
             Layout.fillHeight: true
 
             Column {
@@ -51,7 +49,7 @@ Rectangle {
                     width: parent.width
                     text: card.statusText()
                     horizontalAlignment: Text.AlignHCenter
-                    color: card.live ? theme.accent : "#8a8a93"
+                    color: card.live ? theme.accent : theme.mutedForeground
                     font.pixelSize: 11
                     font.bold: card.live
                     wrapMode: Text.WordWrap
@@ -96,7 +94,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             text: modelData.name
-                            color: "#f2f2f4"
+                            color: theme.foreground
                             font.pixelSize: 14
                             elide: Text.ElideRight
                         }
@@ -105,19 +103,19 @@ Rectangle {
                             Layout.fillWidth: true
                             visible: text.length > 0
                             text: modelData.record
-                            color: "#6f6f78"
+                            color: theme.mutedForeground
                             font.pixelSize: 10
                             elide: Text.ElideRight
                         }
                     }
 
                     Text {
-                        Layout.preferredWidth: 44
+                        Layout.preferredWidth: 46
                         Layout.alignment: Qt.AlignVCenter
                         horizontalAlignment: Text.AlignRight
                         text: card.modelData.state === "pre" ? "" : modelData.score
-                        color: modelData.winner ? theme.accent : "#f2f2f4"
-                        font.pixelSize: 19
+                        color: modelData.winner ? theme.accent : theme.foreground
+                        font.pixelSize: 20
                         font.bold: true
                     }
                 }
@@ -134,7 +132,7 @@ Rectangle {
         Text {
             Layout.fillWidth: true
             text: card.modelData.name
-            color: "#f2f2f4"
+            color: theme.foreground
             font.pixelSize: 15
             font.bold: true
             elide: Text.ElideRight
@@ -143,7 +141,7 @@ Rectangle {
         Text {
             Layout.fillWidth: true
             text: card.detailText()
-            color: card.live ? theme.accent : "#8a8a93"
+            color: card.live ? theme.accent : theme.mutedForeground
             font.pixelSize: 11
             elide: Text.ElideRight
         }
@@ -152,7 +150,7 @@ Rectangle {
             Layout.fillWidth: true
             visible: text.length > 0
             text: card.modelData.venue
-            color: "#6f6f78"
+            color: theme.mutedForeground
             font.pixelSize: 10
             elide: Text.ElideRight
         }

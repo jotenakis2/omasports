@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="14" fill="#FFD60A"/>
-  <rect x="10" y="16" width="44" height="32" rx="7" fill="#141416"/>
-  <rect x="17" y="24" width="10" height="4" rx="2" fill="#FFD60A"/>
-  <rect x="37" y="24" width="10" height="4" rx="2" fill="#FFD60A"/>
-  <rect x="17" y="32" width="15" height="4" rx="2" fill="#FFD60A"/>
-  <rect x="37" y="32" width="10" height="4" rx="2" fill="#FFD60A"/>
-  <rect x="24" y="40" width="16" height="3" rx="1.5" fill="#FFD60A" opacity="0.55"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>omasports</title>
+  <desc>Three score bars on one baseline, rising to the right.</desc>
+  <rect width="128" height="128" rx="30" fill="#101014"/>
+  <g fill="#FFD60A">
+    <rect x="22" y="66" width="22" height="32" rx="5"/>
+    <rect x="53" y="48" width="22" height="50" rx="5"/>
+    <rect x="84" y="30" width="22" height="68" rx="5"/>
+  </g>
 </svg>

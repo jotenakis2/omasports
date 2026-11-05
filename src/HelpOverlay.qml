@@ -22,8 +22,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: "#05050a"
-        opacity: 0.72
+        color: theme.background
+        opacity: 0.82
 
         MouseArea {
             anchors.fill: parent
@@ -36,9 +36,9 @@ Item {
         width: Math.min(520, parent.width - 48)
         height: content.implicitHeight + 44
         radius: theme.radius
-        color: "#17171b"
+        color: theme.card
         border.width: 1
-        border.color: "#2c2c34"
+        border.color: theme.line
 
         ColumnLayout {
             id: content
@@ -46,12 +46,19 @@ Item {
             anchors.margins: 22
             spacing: 11
 
-            Text {
+            RowLayout {
                 Layout.fillWidth: true
-                text: qsTr("Keyboard shortcuts")
-                color: "#f2f2f4"
-                font.pixelSize: 17
-                font.bold: true
+                spacing: 10
+
+                LogoMark { size: 18; Layout.alignment: Qt.AlignVCenter }
+
+                Text {
+                    Layout.fillWidth: true
+                    text: qsTr("Keyboard shortcuts")
+                    color: theme.foreground
+                    font.pixelSize: 17
+                    font.bold: true
+                }
             }
 
             Item { Layout.preferredHeight: 2 }
@@ -76,7 +83,8 @@ Item {
                     Text {
                         Layout.fillWidth: true
                         text: modelData.action
-                        color: "#c9c9cf"
+                        color: theme.foreground
+                        opacity: 0.82
                         font.pixelSize: 12
                     }
                 }
@@ -87,12 +95,12 @@ Item {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                color: "#26262d"
+                color: theme.line
             }
 
             Text {
                 text: qsTr("Scores from ESPN")
-                color: "#6f6f78"
+                color: theme.mutedForeground
                 font.pixelSize: 10
             }
         }

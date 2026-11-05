@@ -2,7 +2,7 @@
 
 Live scores and fixtures for every sport, in one window, from the keyboard.
 
-![omasports showing live NBA scores](screenshot.png)
+![omasports showing NBA results](screenshot.png)
 
 ## What it does
 
@@ -14,7 +14,8 @@ Live scores and fixtures for every sport, in one window, from the keyboard.
 - Games in progress refresh every 30 seconds, and the header shows how many
   are live.
 - Search across every league, in the language of the desktop.
-- Follows the Omarchy accent color, window rounding, and language live.
+- Follows the Omarchy palette (dark or light), accent, window rounding, and
+  language live.
 
 Scores come from ESPN's public scoreboard API. No key, no account. The feed is
 unofficial, so a rare game can be missing or lag a minute behind.
@@ -78,6 +79,7 @@ src/LeagueSidebar.qml   league list and search
 src/EventCard.qml       one game or event
 src/TeamBadge.qml       crest with an abbreviation fallback
 src/ActionButton.qml    flat theme-following button
+src/LogoMark.qml        the score-bar mark, in the live accent
 src/HelpOverlay.qml     the shortcut sheet
 tests/                  calibration tests for backend, theme, translator
 pkgbuild/               PKGBUILD, desktop entry, icon
