@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=omasports
+GenericName=Sports scores
+GenericName[fr]=Scores sportifs
+Comment=Live scores and fixtures for every sport
+Comment[fr]=Scores et matchs en direct
+Exec=omasports
+Icon=omasports
+Terminal=false
+Categories=Utility;
+StartupWMClass=omasports

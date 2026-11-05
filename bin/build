@@ -1,0 +1,14 @@
+#!/bin/sh
+# shellcheck enable=all
+set -eu
+
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+mkdir -p "${ROOT}/build"
+cd "${ROOT}/build"
+
+CORES="$(nproc)"
+
+qmake6 "${ROOT}/omasports.pro"
+make -j"${CORES}"
+
+echo "Built ${ROOT}/build/omasports"

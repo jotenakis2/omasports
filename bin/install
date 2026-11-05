@@ -1,0 +1,17 @@
+#!/bin/sh
+# shellcheck enable=all
+set -eu
+
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+"${ROOT}/bin/build"
+cd "${ROOT}/pkgbuild"
+
+# Build the package as the user, then install it through polkit. Omarchy's
+# rule is pkexec with the fingerprint agent, never sudo.
+makepkg -f --noconfirm
+PACKAGE="$(find . -maxdepth 1 -name 'omasports-*.pkg.tar.*' -print -quit)"
+if [ -z "${PACKAGE}" ]; then
+    echo "makepkg did not produce a package" >&2
+    exit 1
+fi
+pkexec pacman -U --noconfirm "${PACKAGE}"
