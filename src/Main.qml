@@ -32,61 +32,79 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequences: ["j", "J"]
+        sequence: "j"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: win.stepLeague(1)
     }
     Shortcut {
-        sequences: ["k", "K"]
+        sequence: "k"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: win.stepLeague(-1)
     }
     Shortcut {
-        sequences: ["Up"]
-        context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
-        onActivated: win.stepLeague(-1)
-    }
-    Shortcut {
-        sequences: ["Down"]
+        sequence: "Down"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: win.stepLeague(1)
     }
     Shortcut {
-        sequences: ["h", "H", "Left"]
+        sequence: "Up"
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        onActivated: win.stepLeague(-1)
+    }
+    Shortcut {
+        sequence: "h"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
         onActivated: backend.previousDay()
     }
     Shortcut {
-        sequences: ["l", "L", "Right"]
+        sequence: "l"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
         onActivated: backend.nextDay()
     }
     Shortcut {
-        sequences: ["t", "T"]
+        sequence: "Left"
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
+        onActivated: backend.previousDay()
+    }
+    Shortcut {
+        sequence: "Right"
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
+        onActivated: backend.nextDay()
+    }
+    Shortcut {
+        sequence: "t"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
         onActivated: backend.today()
     }
     Shortcut {
-        sequences: ["d", "D"]
+        sequence: "d"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: backend.toggleLive()
     }
     Shortcut {
-        sequences: ["s", "S"]
+        sequence: "s"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible
         onActivated: win.settingsVisible = !win.settingsVisible
     }
     Shortcut {
-        sequences: ["r", "R", "Space"]
+        sequence: "r"
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        onActivated: backend.refresh()
+    }
+    Shortcut {
+        sequence: "Space"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: backend.refresh()
@@ -98,7 +116,7 @@ ApplicationWindow {
         onActivated: sidebar.focusSearch()
     }
     Shortcut {
-        sequences: ["q", "Q"]
+        sequence: "q"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: Qt.quit()

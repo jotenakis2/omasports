@@ -253,6 +253,7 @@ Rectangle {
                     required property var modelData
 
                     readonly property bool current: backend.leagueIndex === modelData.index
+                                                     && !backend.liveMode
 
                     width: list.width
                     height: 34
