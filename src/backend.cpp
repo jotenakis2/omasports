@@ -180,6 +180,8 @@ Backend::Backend(const QString &settingsPath, bool online, QObject *parent)
         }
     }
 
+    m_standingsHeaders = standingsHeadersFor(this->league().value("sport").toString());
+
     // Persist the normalized list, including an empty one, so "none" survives
     // the next launch instead of falling back to every league.
     settings.setValue("leagues/enabled", enabledLeagues());
@@ -270,6 +272,7 @@ void Backend::selectLeague(int index)
     m_liveMode = false;
     m_leagueIndex = index;
     m_events.clear();
+    m_standings.clear();
     m_liveCount = 0;
     m_updatedAt = QDateTime();
     m_status = m_online ? "loading" : "idle";
@@ -277,6 +280,7 @@ void Backend::selectLeague(int index)
     saveSelection();
     if (leavingLive)
         emit liveModeChanged();
+    emit standingsChanged();
     notifyAll();
     refresh();
 }
@@ -286,6 +290,10 @@ void Backend::nextDay()
     if (m_liveMode) {
         m_liveMode = false;
         emit liveModeChanged();
+    }
+    if (m_standingsVisible) {
+        m_standingsVisible = false;
+        emit standingsChanged();
     }
     m_dayOffset = qMin(m_dayOffset + 1, 366);
     m_events.clear();
@@ -302,6 +310,10 @@ void Backend::previousDay()
         m_liveMode = false;
         emit liveModeChanged();
     }
+    if (m_standingsVisible) {
+        m_standingsVisible = false;
+        emit standingsChanged();
+    }
     m_dayOffset = qMax(m_dayOffset - 1, -366);
     m_events.clear();
     m_liveCount = 0;
@@ -314,11 +326,16 @@ void Backend::previousDay()
 void Backend::today()
 {
     const bool wasLive = m_liveMode;
+    const bool wasStandings = m_standingsVisible;
     if (wasLive) {
         m_liveMode = false;
         emit liveModeChanged();
     }
-    if (m_dayOffset == 0 && !wasLive) {
+    if (wasStandings) {
+        m_standingsVisible = false;
+        emit standingsChanged();
+    }
+    if (m_dayOffset == 0 && !wasLive && !wasStandings) {
         refresh();
         return;
     }
@@ -344,13 +361,50 @@ void Backend::setLive(bool live)
         return;
     }
 
+    if (live && m_standingsVisible) {
+        m_standingsVisible = false;
+        emit standingsChanged();
+    }
+
     m_liveMode = live;
     m_events.clear();
+    m_standings.clear();
     m_liveCount = 0;
     m_updatedAt = QDateTime();
     m_error.clear();
     m_status = m_online ? "loading" : "idle";
     emit liveModeChanged();
+    notifyAll();
+    refresh();
+}
+
+void Backend::toggleStandings()
+{
+    setStandings(!m_standingsVisible);
+}
+
+void Backend::setStandings(bool visible)
+{
+    if (visible == m_standingsVisible) {
+        if (visible)
+            refresh();
+        return;
+    }
+
+    if (visible && m_liveMode) {
+        m_liveMode = false;
+        emit liveModeChanged();
+    }
+
+    m_standingsVisible = visible;
+    m_standings.clear();
+    m_standingsHeaders = standingsHeadersFor(this->league().value("sport").toString());
+    m_events.clear();
+    m_liveCount = 0;
+    m_updatedAt = QDateTime();
+    m_error.clear();
+    m_status = m_online ? "loading" : "idle";
+    emit standingsChanged();
     notifyAll();
     refresh();
 }
@@ -464,6 +518,10 @@ void Backend::refresh()
     cancelPending();
     if (m_liveMode) {
         fetchLive();
+        return;
+    }
+    if (m_standingsVisible) {
+        fetchStandings();
         return;
     }
 
@@ -675,13 +733,81 @@ void Backend::cancelPending()
     cancelLiveRequests();
 }
 
+void Backend::fetchStandings()
+{
+    const QVariantMap league = this->league();
+    if (league.isEmpty())
+        return;
+
+    const QString sport = league.value("sport").toString();
+    m_standingsHeaders = standingsHeadersFor(sport);
+    if (m_standingsHeaders.isEmpty()) {
+        m_standings.clear();
+        m_updatedAt = QDateTime::currentDateTime();
+        m_status = "ready";
+        m_error.clear();
+        emit standingsChanged();
+        emit statusChanged();
+        return;
+    }
+
+    m_status = "loading";
+    m_error.clear();
+    emit statusChanged();
+
+    const QUrl url(QStringLiteral("https://site.api.espn.com/apis/v2/sports/%1/%2/standings")
+                       .arg(sport, league.value("league").toString()));
+    QNetworkRequest request(url);
+    request.setTransferTimeout(15000);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+
+    QNetworkReply *reply = m_network.get(request);
+    m_pending = reply;
+    connect(reply, &QNetworkReply::finished, this, [this, reply, sport] {
+        if (reply != m_pending)
+            return;
+        m_pending.clear();
+        const QByteArray payload = reply->readAll();
+        const QString networkError = reply->error() == QNetworkReply::NoError
+                                       ? QString() : reply->errorString();
+        reply->deleteLater();
+
+        if (!networkError.isEmpty()) {
+            m_status = "error";
+            m_error = networkError;
+            emit statusChanged();
+            return;
+        }
+
+        QString parseError;
+        const QVariantList groups = parseStandings(payload, sport, &parseError);
+        if (!parseError.isEmpty()) {
+            m_status = "error";
+            m_error = parseError;
+            emit statusChanged();
+            return;
+        }
+
+        m_standings = groups;
+        m_standingsHeaders = standingsHeadersFor(sport);
+        m_updatedAt = QDateTime::currentDateTime();
+        m_status = "ready";
+        m_error.clear();
+        emit eventsChanged();
+        emit standingsChanged();
+        emit statusChanged();
+    });
+}
+
 void Backend::retranslate()
 {
     m_leagues = leagueCatalog();
+    m_standingsHeaders = standingsHeadersFor(this->league().value("sport").toString());
     emit leaguesChanged();
     emit leagueChanged();
     emit dateChanged();
     emit eventsChanged();
+    emit standingsChanged();
 }
 
 void Backend::notifyAll()
@@ -796,6 +922,139 @@ QUrl Backend::scoreboardUrl(const QString &sport, const QString &league, const Q
     query.addQueryItem("dates", date.toString("yyyyMMdd"));
     url.setQuery(query);
     return url;
+}
+
+QVariantList Backend::parseStandings(const QByteArray &payload, const QString &sport,
+                                          QString *error)
+{
+    if (error)
+        error->clear();
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(payload, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        if (error)
+            *error = parseError.errorString().isEmpty()
+                       ? QStringLiteral("Unexpected response from the standings")
+                       : parseError.errorString();
+        return {};
+    }
+
+    const QJsonObject root = document.object();
+    QJsonArray groups = root.value("children").toArray();
+    if (groups.isEmpty()) {
+        if (!root.value("standings").isObject())
+            return {};
+        groups.append(root);
+    }
+
+    const bool singleGroup = groups.size() == 1;
+    QVariantList result;
+    for (const auto &groupValue : groups) {
+        const QJsonObject group = groupValue.toObject();
+        const QJsonArray entries = group.value("standings").toObject()
+                                       .value("entries").toArray();
+        if (entries.isEmpty())
+            continue;
+
+        QVariantList rows;
+        int index = 0;
+        for (const auto &entryValue : entries) {
+            ++index;
+            const QJsonObject entry = entryValue.toObject();
+            const QJsonObject team = entry.value("team").toObject();
+
+            QHash<QString, QJsonObject> stats;
+            for (const auto &statValue : entry.value("stats").toArray()) {
+                const QJsonObject stat = statValue.toObject();
+                const QString name = stat.value("name").toString();
+                if (!name.isEmpty())
+                    stats.insert(name, stat);
+            }
+
+            auto display = [&stats](std::initializer_list<const char *> names) {
+                for (const char *name : names) {
+                    const auto it = stats.constFind(QString::fromLatin1(name));
+                    if (it != stats.constEnd())
+                        return it.value().value("displayValue").toString();
+                }
+                return QString();
+            };
+            auto numeric = [&stats](const char *name) {
+                const auto it = stats.constFind(QString::fromLatin1(name));
+                return it == stats.constEnd() ? 0.0 : it.value().value("value").toDouble();
+            };
+
+            int rank = int(numeric("rank"));
+            if (rank == 0)
+                rank = int(numeric("playoffSeed"));
+            if (rank == 0)
+                rank = index;
+
+            QStringList cells;
+            if (sport == "soccer") {
+                cells << display({"gamesPlayed"}) << display({"wins"}) << display({"ties"})
+                      << display({"losses"}) << display({"pointDifferential"})
+                      << display({"points"});
+            } else if (sport == "rugby") {
+                cells << display({"gamesPlayed"}) << display({"wins", "gamesWon"})
+                      << display({"ties", "gamesDrawn"}) << display({"losses", "gamesLost"})
+                      << display({"points"});
+            } else if (sport == "football") {
+                cells << display({"wins"}) << display({"losses"}) << display({"ties"})
+                      << display({"winPercent"});
+            } else if (sport == "basketball" || sport == "baseball") {
+                cells << display({"wins"}) << display({"losses"}) << display({"winPercent"})
+                      << display({"gamesBehind"});
+            } else if (sport == "hockey") {
+                cells << display({"wins"}) << display({"losses"}) << display({"otLosses"})
+                      << display({"points"});
+            } else {
+                return {};
+            }
+
+            QVariantMap teamMap;
+            teamMap.insert("name", team.value("displayName").toString());
+            teamMap.insert("abbreviation", team.value("abbreviation").toString());
+            teamMap.insert("logo", teamLogo(team));
+            teamMap.insert("color", team.value("color").toString());
+
+            QVariantMap row;
+            row.insert("rank", rank);
+            row.insert("team", teamMap);
+            row.insert("cells", cells);
+            rows.append(row);
+        }
+
+        if (rows.isEmpty())
+            continue;
+
+        std::sort(rows.begin(), rows.end(), [](const QVariant &left, const QVariant &right) {
+            return left.toMap().value("rank").toInt()
+                 < right.toMap().value("rank").toInt();
+        });
+
+        QVariantMap out;
+        out.insert("name", singleGroup ? QString() : group.value("name").toString());
+        out.insert("rows", rows);
+        result.append(out);
+    }
+    return result;
+}
+
+QStringList Backend::standingsHeadersFor(const QString &sport)
+{
+    if (sport == "soccer")
+        return {tr("MP"), tr("W"), tr("D"), tr("L"), tr("GD"), tr("Pts")};
+    if (sport == "rugby")
+        return {tr("MP"), tr("W"), tr("D"), tr("L"), tr("Pts")};
+    if (sport == "football")
+        return {tr("W"), tr("L"), tr("T"), tr("Pct")};
+    if (sport == "basketball" || sport == "baseball")
+        return {tr("W"), tr("L"), tr("Pct"), tr("GB")};
+    if (sport == "hockey")
+        return {tr("W"), tr("L"), tr("OTL"), tr("Pts")};
+    return {};
 }
 
 QVariantList Backend::liveEventsFrom(const QVariantList &scoreboardEvents, const QString &sport,

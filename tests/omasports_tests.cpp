@@ -56,6 +56,85 @@ const char *tournamentPayload = R"({
   }]
 })";
 
+const char *soccerStandings = R"({
+  "children": [{
+    "name": "French Ligue 1 2026-27",
+    "standings": {"entries": [
+      {
+        "team": {"displayName": "Marseille", "abbreviation": "MAR",
+                 "color": "abc", "logo": "mar.png"},
+        "stats": [
+          {"name": "gamesPlayed", "value": 9, "displayValue": "9"},
+          {"name": "wins", "value": 5, "displayValue": "5"},
+          {"name": "ties", "value": 2, "displayValue": "2"},
+          {"name": "losses", "value": 2, "displayValue": "2"},
+          {"name": "pointDifferential", "value": 6, "displayValue": "+6"},
+          {"name": "points", "value": 17, "displayValue": "17"},
+          {"name": "rank", "value": 2, "displayValue": "2"}
+        ]
+      },
+      {
+        "team": {"displayName": "Paris Saint-Germain", "abbreviation": "PSG",
+                 "color": "def", "logo": "psg.png"},
+        "stats": [
+          {"name": "gamesPlayed", "value": 9, "displayValue": "9"},
+          {"name": "wins", "value": 6, "displayValue": "6"},
+          {"name": "ties", "value": 2, "displayValue": "2"},
+          {"name": "losses", "value": 1, "displayValue": "1"},
+          {"name": "pointDifferential", "value": 11, "displayValue": "+11"},
+          {"name": "points", "value": 20, "displayValue": "20"},
+          {"name": "rank", "value": 1, "displayValue": "1"}
+        ]
+      }
+    ]}
+  }]
+})";
+
+const char *basketballStandings = R"({
+  "children": [{
+    "name": "Eastern Conference",
+    "standings": {"entries": [
+      {
+        "team": {"displayName": "Boston Celtics", "abbreviation": "BOS",
+                 "color": "123", "logo": "bos.png"},
+        "stats": [
+          {"name": "wins", "value": 6, "displayValue": "6"},
+          {"name": "losses", "value": 2, "displayValue": "2"},
+          {"name": "winPercent", "value": 0.75, "displayValue": ".750"},
+          {"name": "gamesBehind", "value": 0, "displayValue": "-"},
+          {"name": "playoffSeed", "value": 1, "displayValue": "1"}
+        ]
+      },
+      {
+        "team": {"displayName": "New York Knicks", "abbreviation": "NYK",
+                 "color": "456", "logo": "nyk.png"},
+        "stats": [
+          {"name": "wins", "value": 4, "displayValue": "4"},
+          {"name": "losses", "value": 4, "displayValue": "4"},
+          {"name": "winPercent", "value": 0.5, "displayValue": ".500"},
+          {"name": "gamesBehind", "value": 2, "displayValue": "2"},
+          {"name": "playoffSeed", "value": 2, "displayValue": "2"}
+        ]
+      }
+    ]}
+  }, {
+    "name": "Western Conference",
+    "standings": {"entries": [
+      {
+        "team": {"displayName": "Denver Nuggets", "abbreviation": "DEN",
+                 "color": "789", "logo": "den.png"},
+        "stats": [
+          {"name": "wins", "value": 7, "displayValue": "7"},
+          {"name": "losses", "value": 1, "displayValue": "1"},
+          {"name": "winPercent", "value": 0.875, "displayValue": ".875"},
+          {"name": "gamesBehind", "value": 0, "displayValue": "-"},
+          {"name": "playoffSeed", "value": 1, "displayValue": "1"}
+        ]
+      }
+    ]}
+  }]
+})";
+
 void writeFile(const QString &path, const QByteArray &contents)
 {
     QFile file(path);
@@ -190,6 +269,76 @@ private slots:
         const QVariantList upcoming = Backend::parseScoreboard(tournamentPayload, &error);
         QVERIFY(error.isEmpty());
         QVERIFY(Backend::liveEventsFrom(upcoming, "golf", "Golf", "PGA Tour").isEmpty());
+    }
+
+    void parseStandingsSortsAndPicksColumns()
+    {
+        QString error;
+        const QVariantList groups = Backend::parseStandings(soccerStandings, "soccer", &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(groups.size(), 1);
+
+        const QVariantMap group = groups.first().toMap();
+        // A single table has no group heading.
+        QCOMPARE(group.value("name").toString(), QString());
+        const QVariantList rows = group.value("rows").toList();
+        QCOMPARE(rows.size(), 2);
+        QCOMPARE(rows.first().toMap().value("rank").toInt(), 1);
+        QCOMPARE(rows.first().toMap().value("team").toMap().value("name").toString(),
+                 QStringLiteral("Paris Saint-Germain"));
+        QCOMPARE(rows.first().toMap().value("cells").toStringList(),
+                 QStringList({"9", "6", "2", "1", "+11", "20"}));
+
+        QCOMPARE(Backend::standingsHeadersFor("soccer"),
+                 QStringList({"MP", "W", "D", "L", "GD", "Pts"}));
+        QCOMPARE(Backend::standingsHeadersFor("basketball"),
+                 QStringList({"W", "L", "Pct", "GB"}));
+        QVERIFY(Backend::standingsHeadersFor("tennis").isEmpty());
+    }
+
+    void parseStandingsKeepsConferences()
+    {
+        QString error;
+        const QVariantList groups = Backend::parseStandings(basketballStandings,
+                                                            "basketball", &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(groups.size(), 2);
+        QCOMPARE(groups.at(0).toMap().value("name").toString(),
+                 QStringLiteral("Eastern Conference"));
+        QCOMPARE(groups.at(1).toMap().value("name").toString(),
+                 QStringLiteral("Western Conference"));
+
+        const QVariantList rows = groups.at(0).toMap().value("rows").toList();
+        QCOMPARE(rows.first().toMap().value("team").toMap().value("name").toString(),
+                 QStringLiteral("Boston Celtics"));
+        QCOMPARE(rows.first().toMap().value("cells").toStringList(),
+                 QStringList({"6", "2", ".750", "-"}));
+    }
+
+    void standingsModeCoexistsWithLive()
+    {
+        QTemporaryDir dir;
+        Backend backend(dir.filePath("settings.ini"), false);
+        QCOMPARE(backend.standingsHeaders().size(), 6); // soccer by default
+
+        backend.setStandings(true);
+        QVERIFY(backend.standingsVisible());
+        QCOMPARE(backend.status(), QStringLiteral("idle"));
+
+        backend.setLive(true);
+        QVERIFY(!backend.standingsVisible());
+        QVERIFY(backend.liveMode());
+
+        backend.setStandings(true);
+        QVERIFY(!backend.liveMode());
+        QVERIFY(backend.standingsVisible());
+
+        // Browsing leagues keeps the standings view.
+        backend.selectLeague(1);
+        QVERIFY(backend.standingsVisible());
+
+        backend.setStandings(false);
+        QVERIFY(!backend.standingsVisible());
     }
 
     void leaguesStartEnabledAndPersist()

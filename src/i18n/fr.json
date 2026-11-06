@@ -63,5 +63,18 @@
   "Choose the leagues you want to follow.": "Choisissez les ligues que vous voulez suivre.",
   "No leagues selected": "Aucune ligue sélectionnée",
   "Choose leagues": "Choisir les ligues",
-  "S leagues": "S ligues"
+  "S leagues": "S ligues",
+  "Standings": "Classement",
+  "C standings": "C classement",
+  "Team": "Équipe",
+  "Loading standings…": "Chargement du classement…",
+  "Could not load standings": "Impossible de charger le classement",
+  "No standings for this competition.": "Aucun classement pour cette compétition.",
+  "MP": "MJ",
+  "GD": "Diff",
+  "Pct": "%",
+  "OTL": "OT",
+  "Eastern Conference": "Conférence Est",
+  "Western Conference": "Conférence Ouest",
+  "League Phase": "Phase de ligue"
 }

@@ -14,6 +14,12 @@ Live scores and fixtures for every sport, in one window, from the keyboard.
 
   ![omasports showing live scores](screenshot-live.png)
 
+- A **Standings** view (`C`) shows the table for the selected league, with
+  positions, played, wins, draws, losses, goal difference, and points, grouped
+  into conferences or pools when the feed splits them.
+
+  ![omasports showing Ligue 1 standings](screenshot-standings.png)
+
 - A **Sports and leagues** menu (`S`) chooses which leagues appear in the
   sidebar and in the live view; the choice is remembered across launches.
 - A "Today" button and day-by-day navigation, so yesterday's results are one
@@ -58,6 +64,7 @@ Adjust `Exec=` in the `.desktop` file if the binary lives somewhere other than
 | Key | Action |
 | --- | --- |
 | `D` | Live view: every game in progress |
+| `C` | Standings for the selected league |
 | `S` | Choose which leagues to show |
 | `J` / `K`, `↓` / `↑` | Next / previous league |
 | `H` / `L`, `←` / `→` | Previous / next day |
@@ -83,9 +90,9 @@ bin/build   # qmake6 + make into build/omasports
 bin/test    # Qt Test suite, offscreen
 ```
 
-The scoreboard parser, the league catalog, league filtering, persistence, and
-day navigation are covered by tests that never touch the network: `Backend`
-takes an offline flag for exactly that.
+The scoreboard and standings parsers, the league catalog, league filtering,
+persistence, and day navigation are covered by tests that never touch the
+network: `Backend` takes an offline flag for exactly that.
 
 Adding a league is one line in the `catalog` table in `src/backend.cpp`, using
 ESPN's sport and league slugs. Its scoreboard lives at
@@ -102,6 +109,7 @@ src/translator.{h,cpp}  Omarchy language, live
 src/Main.qml            window, header, keyboard, states
 src/LeagueSidebar.qml   league list, sport sections, search
 src/EventCard.qml       one game or event
+src/StandingsView.qml   the league table
 src/TeamBadge.qml       crest with an abbreviation fallback
 src/ActionButton.qml    flat theme-following button
 src/LogoMark.qml        the score-bar mark, in the live accent

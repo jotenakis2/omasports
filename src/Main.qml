@@ -58,31 +58,31 @@ ApplicationWindow {
     Shortcut {
         sequence: "h"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.previousDay()
     }
     Shortcut {
         sequence: "l"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.nextDay()
     }
     Shortcut {
         sequence: "Left"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.previousDay()
     }
     Shortcut {
         sequence: "Right"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.nextDay()
     }
     Shortcut {
         sequence: "t"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.today()
     }
     Shortcut {
@@ -90,6 +90,12 @@ ApplicationWindow {
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: backend.toggleLive()
+    }
+    Shortcut {
+        sequence: "c"
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        onActivated: backend.toggleStandings()
     }
     Shortcut {
         sequence: "s"
@@ -140,12 +146,12 @@ ApplicationWindow {
         interval: backend.liveMode ? 60000 : 30000
         repeat: true
         running: (backend.liveMode || backend.liveCount > 0) && win.visible
-                 && !win.helpVisible && !win.settingsVisible
+                 && !win.helpVisible && !win.settingsVisible && !backend.standingsVisible
         onTriggered: backend.refresh()
     }
 
     onActiveChanged: {
-        if (active && (backend.liveMode || backend.liveCount > 0))
+        if (active && (backend.liveMode || backend.liveCount > 0) && !backend.standingsVisible)
             backend.refresh()
     }
 
@@ -187,7 +193,7 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
 
                 RowLayout {
-                    visible: !backend.liveMode
+                    visible: !backend.liveMode && !backend.standingsVisible
                     spacing: 4
 
                     ActionButton {
@@ -223,8 +229,14 @@ ApplicationWindow {
                     onClicked: backend.toggleLive()
                 }
 
+                ActionButton {
+                    text: qsTr("Standings")
+                    primary: backend.standingsVisible
+                    onClicked: backend.toggleStandings()
+                }
+
                 RowLayout {
-                    visible: backend.liveCount > 0 && !backend.liveMode
+                    visible: backend.liveCount > 0 && !backend.liveMode && !backend.standingsVisible
                     spacing: 6
 
                     Rectangle {
@@ -235,7 +247,7 @@ ApplicationWindow {
                         color: theme.accent
 
                         SequentialAnimation on opacity {
-                            running: backend.liveCount > 0 && !backend.liveMode
+                            running: backend.liveCount > 0 && !backend.liveMode && !backend.standingsVisible
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.45; duration: 800; easing.type: Easing.InOutQuad }
                             NumberAnimation { to: 1; duration: 800; easing.type: Easing.InOutQuad }
@@ -305,6 +317,8 @@ ApplicationWindow {
                                     return qsTr("%n games in progress", "", backend.liveCount)
                                 if (win.noLeagues)
                                     return qsTr("Choose the leagues you want to follow.")
+                                if (backend.standingsVisible)
+                                    return backend.league.sportName + "  ·  " + qsTr("Standings")
                                 var count = backend.events.length
                                 return backend.status === "ready" && count > 0
                                        ? backend.league.sportName + "  ·  " + qsTr("%n games", "", count)
@@ -319,7 +333,7 @@ ApplicationWindow {
                     Rectangle {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 32
-                        visible: backend.status === "error" && backend.events.length > 0
+                        visible: backend.status === "error" && backend.events.length > 0 && !backend.standingsVisible
                         color: theme.card
                         radius: Math.min(6, theme.radius)
                         clip: true
@@ -352,7 +366,7 @@ ApplicationWindow {
                         ListView {
                             id: games
                             anchors.fill: parent
-                            visible: backend.events.length > 0
+                            visible: backend.events.length > 0 && !backend.standingsVisible
                             clip: true
                             spacing: 8
                             model: backend.events
@@ -405,7 +419,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noLeagues && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && backend.events.length === 0
                                      && backend.status !== "ready" && backend.status !== "error"
                             spacing: 12
 
@@ -426,7 +440,7 @@ ApplicationWindow {
                         ColumnLayout {
                             anchors.centerIn: parent
                             width: Math.min(420, parent.width)
-                            visible: !win.noLeagues && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && backend.events.length === 0
                                      && backend.status === "error"
                             spacing: 10
 
@@ -458,7 +472,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noLeagues && !backend.liveMode && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && !backend.liveMode && backend.events.length === 0
                                      && backend.status === "ready"
                             spacing: 12
 
@@ -487,7 +501,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noLeagues && backend.liveMode && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && backend.liveMode && backend.events.length === 0
                                      && backend.status === "ready"
                             spacing: 12
 
@@ -511,6 +525,11 @@ ApplicationWindow {
                                 primary: true
                                 onClicked: backend.refresh()
                             }
+                        }
+
+                        StandingsView {
+                            anchors.fill: parent
+                            visible: backend.standingsVisible && !win.noLeagues
                         }
 
                         ColumnLayout {
@@ -586,6 +605,12 @@ ApplicationWindow {
                 Text { text: "·"; color: theme.line; font.pixelSize: 11 }
                 Text {
                     text: qsTr("D live")
+                    color: theme.mutedForeground
+                    font.pixelSize: 11
+                }
+                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
+                Text {
+                    text: qsTr("C standings")
                     color: theme.mutedForeground
                     font.pixelSize: 11
                 }
