@@ -327,6 +327,7 @@ private slots:
         QCOMPARE(backend.recordLabel("basketball", "4-4"), QStringLiteral("4W · 4L"));
         QCOMPARE(backend.recordLabel("baseball", "103-59"), QStringLiteral("103W · 59L"));
         QCOMPARE(backend.recordLabel("mma", "10-1-0"), QStringLiteral("10W · 1L · 0D"));
+        QCOMPARE(backend.recordLabel("rugby", "LWWWW"), QStringLiteral("Form: L W W W W"));
         // Unexpected shapes and sports without a known layout stay as they are.
         QCOMPARE(backend.recordLabel("soccer", "3-1"), QStringLiteral("3-1"));
         QCOMPARE(backend.recordLabel("rugby", "4-1"), QStringLiteral("4-1"));
@@ -501,9 +502,9 @@ private slots:
 
         {
             Backend backend(settings, false);
-            QCOMPARE(backend.leagues().size(), 33);
-            QCOMPARE(backend.enabledLeagues().size(), 33);
-            QCOMPARE(backend.settingsRows().size(), 46);
+            QCOMPARE(backend.leagues().size(), 34);
+            QCOMPARE(backend.enabledLeagues().size(), 34);
+            QCOMPARE(backend.settingsRows().size(), 47);
             QVERIFY(backend.enabledLeagues().contains("soccer/eng.1"));
 
             backend.setLeagueEnabled("soccer", "eng.1", false);
@@ -513,7 +514,37 @@ private slots:
         Backend reopened(settings, false);
         QVERIFY(!reopened.enabledLeagues().contains("soccer/eng.1"));
         QVERIFY(reopened.enabledLeagues().contains("soccer/esp.1"));
-        QCOMPARE(reopened.enabledLeagues().size(), 32);
+        QCOMPARE(reopened.enabledLeagues().size(), 33);
+    }
+
+    void newLeaguesStartEnabledAfterAnUpgrade()
+    {
+        QTemporaryDir dir;
+        const QString settings = dir.filePath("settings.ini");
+
+        QStringList enabled;
+        QStringList known;
+        for (const auto &value : Backend::leagueCatalog()) {
+            const QVariantMap entry = value.toMap();
+            const QString key = entry.value("sport").toString() + "/"
+                                + entry.value("league").toString();
+            if (key != "rugby/270559")
+                known.append(key); // the previous release did not know Top 14
+            if (key != "rugby/270559" && key != "soccer/eng.1")
+                enabled.append(key);
+        }
+
+        {
+            QSettings store(settings, QSettings::IniFormat);
+            store.setValue("leagues/enabled", enabled);
+            store.setValue("leagues/known", known);
+            store.sync();
+        }
+
+        Backend backend(settings, false);
+        QVERIFY(backend.enabledLeagues().contains("rugby/270559"));
+        QVERIFY(!backend.enabledLeagues().contains("soccer/eng.1"));
+        QCOMPARE(backend.enabledLeagues().size(), 33);
     }
 
     void hidingTheCurrentLeaguePicksAnother()
@@ -540,7 +571,7 @@ private slots:
         Backend backend(dir.filePath("settings.ini"), false);
         backend.setSportLeaguesEnabled("soccer", false);
 
-        QCOMPARE(backend.enabledLeagues().size(), 20);
+        QCOMPARE(backend.enabledLeagues().size(), 21);
         QCOMPARE(backend.league().value("sport").toString(), QStringLiteral("football"));
         QCOMPARE(backend.league().value("league").toString(), QStringLiteral("nfl"));
 
@@ -558,7 +589,7 @@ private slots:
         QVERIFY(soccerRow);
 
         backend.setSportLeaguesEnabled("soccer", true);
-        QCOMPARE(backend.enabledLeagues().size(), 33);
+        QCOMPARE(backend.enabledLeagues().size(), 34);
     }
 
     void hidingEveryLeagueLeavesTheBoardEmpty()
@@ -579,7 +610,7 @@ private slots:
         QVERIFY(reopened.enabledLeagues().isEmpty());
 
         reopened.setAllLeaguesEnabled(true);
-        QCOMPARE(reopened.enabledLeagues().size(), 33);
+        QCOMPARE(reopened.enabledLeagues().size(), 34);
     }
 
     void olderSportChoiceSeedsLeagues()
@@ -637,6 +668,7 @@ private slots:
         QCOMPARE(backend.recordLabel("hockey", "11-3-3"), QStringLiteral("11V · 3D · 3OT"));
         QCOMPARE(backend.recordLabel("football", "6-2-1"), QStringLiteral("6V · 2D · 1N"));
         QCOMPARE(backend.recordLabel("basketball", "4-4"), QStringLiteral("4V · 4D"));
+        QCOMPARE(backend.recordLabel("rugby", "LWWWW"), QStringLiteral("Forme : D V V V V"));
     }
 
     void navigationMovesByDay()

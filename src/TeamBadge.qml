@@ -54,13 +54,15 @@ Item {
     function initials() {
         if (!team)
             return ""
-        if (team.abbreviation)
+        if (team.abbreviation && team.abbreviation.length <= 4)
             return team.abbreviation
         var words = (team.name || "").split(" ")
         var letters = ""
         for (var i = 0; i < words.length && letters.length < 3; ++i)
             if (words[i].length > 0)
                 letters += words[i][0]
+        if (letters.length === 0 && team.abbreviation)
+            return team.abbreviation.substring(0, 3).toUpperCase()
         return letters.toUpperCase()
     }
 }

@@ -6,7 +6,7 @@ Live scores and fixtures for every sport, in one window, from the keyboard.
 
 ## What it does
 
-- Scores, schedules, and finals for 33 competitions across soccer, American
+- Scores, schedules, and finals for 34 competitions across soccer, American
   football, basketball, baseball, hockey, tennis, golf, MMA, racing, rugby,
   cricket, volleyball, and Australian football.
 - A **Live** view (`D`) scans every league you follow and keeps only the games

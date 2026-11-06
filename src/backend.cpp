@@ -58,6 +58,7 @@ const CatalogEntry catalog[] = {
     {"mma", "MMA", "ufc", "UFC"},
     {"racing", "Racing", "f1", "Formula 1"},
     {"racing", "Racing", "nascar-premier", "NASCAR Cup Series"},
+    {"rugby", "Rugby", "270559", "Top 14"},
     {"rugby", "Rugby", "180659", "Six Nations"},
     {"rugby", "Rugby", "164205", "Rugby World Cup"},
     {"cricket", "Cricket", "8039", "Cricket World Cup"},
@@ -78,6 +79,14 @@ QString sportSlug(const CatalogEntry &entry)
 QString leagueKey(const QString &sport, const QString &league)
 {
     return sport + '/' + league;
+}
+
+QStringList allLeagueKeys()
+{
+    QStringList keys;
+    for (const auto &entry : catalog)
+        keys.append(leagueKey(sportSlug(entry), QString::fromLatin1(entry.league)));
+    return keys;
 }
 
 QString teamLogo(const QJsonObject &team)
@@ -164,6 +173,15 @@ Backend::Backend(const QString &settingsPath, bool online, QObject *parent)
             m_enabledLeagues.insert(key);
     }
 
+    // A league added since the saved list was written starts enabled, while
+    // leagues the user had already turned off stay off.
+    const QStringList knownLeagues = settings.value("leagues/known").toStringList();
+    if (!knownLeagues.isEmpty()) {
+        for (const auto &key : allLeagueKeys())
+            if (!knownLeagues.contains(key))
+                m_enabledLeagues.insert(key);
+    }
+
     const QString sport = settings.value("league/sport").toString();
     const QString league = settings.value("league/id").toString();
     const bool found = selectBySlug(sport, league);
@@ -185,6 +203,7 @@ Backend::Backend(const QString &settingsPath, bool online, QObject *parent)
     // Persist the normalized list, including an empty one, so "none" survives
     // the next launch instead of falling back to every league.
     settings.setValue("leagues/enabled", enabledLeagues());
+    settings.setValue("leagues/known", allLeagueKeys());
 }
 
 QVariantMap Backend::league() const
@@ -1119,6 +1138,7 @@ void Backend::saveLeagues() const
     QDir().mkpath(QFileInfo(m_settingsPath).absolutePath());
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     settings.setValue("leagues/enabled", enabledLeagues());
+    settings.setValue("leagues/known", allLeagueKeys());
 }
 
 bool Backend::selectBySlug(const QString &sport, const QString &league)
@@ -1152,6 +1172,21 @@ QString Backend::recordLabel(const QString &sport, const QString &record) const
 {
     if (record.isEmpty())
         return {};
+
+    // Rugby's "overall" record is the last few results, not a W-D-L tally.
+    static const QRegularExpression formPattern("^[WDL]+$");
+    if (formPattern.match(record).hasMatch()) {
+        QStringList form;
+        for (const QChar result : record) {
+            if (result == QLatin1Char('W'))
+                form.append(tr("W"));
+            else if (result == QLatin1Char('D'))
+                form.append(tr("D"));
+            else
+                form.append(tr("L"));
+        }
+        return tr("Form: %1").arg(form.join(QLatin1Char(' ')));
+    }
 
     const QStringList parts = record.split('-');
     QStringList letters;
@@ -1397,14 +1432,28 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
             const QJsonObject team = competitor.value("team").toObject();
             const QJsonObject athlete = competitor.value("athlete").toObject();
 
+            QString name = team.value("displayName").toString();
+            if (name.isEmpty())
+                name = team.value("shortDisplayName").toString();
+            if (name.isEmpty())
+                name = team.value("name").toString();
+            if (name.isEmpty())
+                name = athlete.value("displayName").toString();
+            if (name.isEmpty())
+                name = team.value("abbreviation").toString();
+
+            QString shortName = team.value("shortDisplayName").toString();
+            if (shortName.isEmpty())
+                shortName = team.value("name").toString();
+            if (shortName.isEmpty())
+                shortName = athlete.value("shortName").toString();
+
             QVariantMap item;
             item.insert("id", team.value("id").toString());
             item.insert("home", competitor.value("homeAway").toString() == "home");
             item.insert("homeAway", competitor.value("homeAway").toString());
-            item.insert("name", team.value("displayName").toString(
-                                    athlete.value("displayName").toString()));
-            item.insert("shortName", team.value("shortDisplayName").toString(
-                                         athlete.value("shortName").toString()));
+            item.insert("name", name);
+            item.insert("shortName", shortName);
             item.insert("abbreviation", team.value("abbreviation").toString());
             item.insert("logo", teamLogo(team));
             item.insert("color", team.value("color").toString());
