@@ -37,6 +37,10 @@ class Backend : public QObject {
     Q_PROPERTY(QStringList standingsHeaders READ standingsHeaders NOTIFY standingsChanged)
     Q_PROPERTY(QVariantList settingsRows READ settingsRows NOTIFY leaguesChanged)
     Q_PROPERTY(QStringList enabledLeagues READ enabledLeagues NOTIFY leaguesChanged)
+    Q_PROPERTY(bool matchOpen READ matchOpen NOTIFY matchChanged)
+    Q_PROPERTY(QString matchStatus READ matchStatus NOTIFY matchChanged)
+    Q_PROPERTY(QString matchError READ matchError NOTIFY matchChanged)
+    Q_PROPERTY(QVariantMap match READ match NOTIFY matchChanged)
 
 public:
     // Tests construct the backend offline so selection and navigation never
@@ -60,6 +64,10 @@ public:
     QStringList standingsHeaders() const { return m_standingsHeaders; }
     QVariantList settingsRows() const;
     QStringList enabledLeagues() const;
+    bool matchOpen() const { return m_matchOpen; }
+    QString matchStatus() const { return m_matchStatus; }
+    QString matchError() const { return m_matchError; }
+    QVariantMap match() const { return m_match; }
     QDate date() const { return QDate::currentDate().addDays(m_dayOffset); }
 
     Q_INVOKABLE void selectLeague(int index);
@@ -71,6 +79,9 @@ public:
     Q_INVOKABLE void setLive(bool live);
     Q_INVOKABLE void toggleStandings();
     Q_INVOKABLE void setStandings(bool visible);
+    Q_INVOKABLE void openMatch(const QString &id);
+    Q_INVOKABLE void closeMatch();
+    Q_INVOKABLE void refreshMatch();
     Q_INVOKABLE void setLeagueEnabled(const QString &sport, const QString &league, bool enabled);
     Q_INVOKABLE void setSportLeaguesEnabled(const QString &sport, bool enabled);
     Q_INVOKABLE void setAllLeaguesEnabled(bool enabled);
@@ -86,8 +97,11 @@ public:
     static QVariantList parseScoreboard(const QByteArray &payload, QString *error = nullptr);
     static QVariantList parseStandings(const QByteArray &payload, const QString &sport,
                                        QString *error = nullptr);
+    static QVariantMap parseMatchSummary(const QByteArray &payload, const QVariantMap &event,
+                                         QString *error = nullptr);
     static QVariantList liveEventsFrom(const QVariantList &scoreboardEvents, const QString &sport,
-                                       const QString &sportName, const QString &leagueName);
+                                       const QString &leagueSlug, const QString &sportName,
+                                       const QString &leagueName);
     static int liveCountOf(const QVariantList &events);
     static QStringList standingsHeadersFor(const QString &sport);
     static QUrl scoreboardUrl(const QString &sport, const QString &league, const QDate &date);
@@ -100,11 +114,13 @@ signals:
     void dateChanged();
     void liveModeChanged();
     void standingsChanged();
+    void matchChanged();
 
 private:
     struct LiveTask {
         QUrl url;
         QString sport;
+        QString league;
         QString sportName;
         QString leagueName;
     };
@@ -113,6 +129,8 @@ private:
     void cancelPending();
     void fetchLive();
     void fetchStandings();
+    void fetchMatch();
+    void cancelMatchPending();
     void startLiveRequests();
     void finishLive();
     void cancelLiveRequests();
@@ -140,6 +158,12 @@ private:
     QVariantList m_events;
     QVariantList m_standings;
     QStringList m_standingsHeaders;
+    QVariantMap m_match;
+    QString m_matchId;
+    QString m_matchStatus;
+    QString m_matchError;
+    QPointer<QNetworkReply> m_matchPending;
+    bool m_matchOpen = false;
     QSet<QString> m_enabledLeagues;
     int m_leagueIndex = 0;
     int m_dayOffset = 0;

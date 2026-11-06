@@ -409,6 +409,134 @@ void Backend::setStandings(bool visible)
     refresh();
 }
 
+void Backend::openMatch(const QString &id)
+{
+    QVariantMap source;
+    for (const auto &value : m_events) {
+        const QVariantMap event = value.toMap();
+        if (event.value("id").toString() == id) {
+            source = event;
+            break;
+        }
+    }
+    if (source.isEmpty())
+        return;
+
+    cancelMatchPending();
+    m_matchOpen = true;
+    m_matchId = id;
+    m_match = source;
+    m_matchStatus = "loading";
+    m_matchError.clear();
+    emit matchChanged();
+    fetchMatch();
+}
+
+void Backend::closeMatch()
+{
+    cancelMatchPending();
+    if (!m_matchOpen && m_match.isEmpty() && m_matchStatus.isEmpty())
+        return;
+    m_matchOpen = false;
+    m_matchId.clear();
+    m_match.clear();
+    m_matchStatus.clear();
+    m_matchError.clear();
+    emit matchChanged();
+}
+
+void Backend::refreshMatch()
+{
+    if (m_matchOpen)
+        fetchMatch();
+}
+
+void Backend::cancelMatchPending()
+{
+    if (!m_matchPending)
+        return;
+    QNetworkReply *obsolete = m_matchPending.data();
+    m_matchPending.clear();
+    obsolete->abort();
+    obsolete->deleteLater();
+}
+
+void Backend::fetchMatch()
+{
+    if (!m_matchOpen)
+        return;
+    cancelMatchPending();
+
+    QString sport = m_match.value("sport").toString();
+    QString leagueSlug = m_match.value("league").toString();
+    if (sport.isEmpty())
+        sport = league().value("sport").toString();
+    if (leagueSlug.isEmpty())
+        leagueSlug = league().value("league").toString();
+    const QString id = m_match.value("id").toString();
+
+    if (sport.isEmpty() || leagueSlug.isEmpty() || id.isEmpty()) {
+        m_matchStatus = "error";
+        m_matchError = tr("Missing match information");
+        emit matchChanged();
+        return;
+    }
+    if (!m_online) {
+        m_matchStatus = "idle";
+        emit matchChanged();
+        return;
+    }
+
+    m_matchStatus = "loading";
+    m_matchError.clear();
+    emit matchChanged();
+
+    QUrl url(QStringLiteral("https://site.api.espn.com/apis/site/v2/sports/%1/%2/summary")
+                 .arg(sport, leagueSlug));
+    QUrlQuery query;
+    query.addQueryItem("event", id);
+    url.setQuery(query);
+
+    QNetworkRequest request(url);
+    request.setTransferTimeout(15000);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+
+    QNetworkReply *reply = m_network.get(request);
+    m_matchPending = reply;
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        if (reply != m_matchPending)
+            return;
+        m_matchPending.clear();
+
+        const QByteArray payload = reply->readAll();
+        const QString networkError = reply->error() == QNetworkReply::NoError
+                                       ? QString() : reply->errorString();
+        reply->deleteLater();
+
+        if (!networkError.isEmpty()) {
+            m_matchStatus = "error";
+            m_matchError = networkError;
+            emit matchChanged();
+            return;
+        }
+
+        QString parseError;
+        const QVariantMap parsed = parseMatchSummary(payload, m_match, &parseError);
+        if (!parseError.isEmpty()) {
+            m_matchStatus = "error";
+            m_matchError = parseError;
+            emit matchChanged();
+            return;
+        }
+
+        for (auto it = parsed.begin(); it != parsed.end(); ++it)
+            m_match.insert(it.key(), it.value());
+        m_matchStatus = "ready";
+        m_matchError.clear();
+        emit matchChanged();
+    });
+}
+
 void Backend::setLeagueEnabled(const QString &sport, const QString &league, bool enabled)
 {
     bool known = false;
@@ -566,8 +694,17 @@ void Backend::refresh()
             return;
         }
 
-        m_events = events;
-        m_liveCount = liveCountOf(events);
+        QVariantList annotated;
+        const QVariantMap current = this->league();
+        for (const auto &value : events) {
+            QVariantMap event = value.toMap();
+            event.insert("sport", current.value("sport"));
+            event.insert("league", current.value("league"));
+            annotated.append(event);
+        }
+
+        m_events = annotated;
+        m_liveCount = liveCountOf(annotated);
         m_updatedAt = QDateTime::currentDateTime();
         m_status = "ready";
         m_error.clear();
@@ -604,6 +741,7 @@ void Backend::fetchLive()
             LiveTask task;
             task.url = scoreboardUrl(sport, league, day);
             task.sport = sport;
+            task.league = league;
             task.sportName = entry.value("sportName").toString();
             task.leagueName = entry.value("name").toString();
             m_liveQueue.append(task);
@@ -658,7 +796,7 @@ void Backend::startLiveRequests()
                     if (m_liveError.isEmpty())
                         m_liveError = parseError;
                 } else {
-                    const QVariantList live = liveEventsFrom(events, task.sport,
+                    const QVariantList live = liveEventsFrom(events, task.sport, task.league,
                                                              task.sportName, task.leagueName);
                     for (const auto &event : live) {
                         const QString id = event.toMap().value("id").toString();
@@ -797,6 +935,155 @@ void Backend::fetchStandings()
         emit standingsChanged();
         emit statusChanged();
     });
+}
+
+QVariantMap Backend::parseMatchSummary(const QByteArray &payload, const QVariantMap &event,
+                                                QString *error)
+{
+    if (error)
+        error->clear();
+
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(payload, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
+        if (error)
+            *error = parseError.errorString().isEmpty()
+                       ? QStringLiteral("Unexpected response from the match summary")
+                       : parseError.errorString();
+        return {};
+    }
+
+    const QJsonObject root = document.object();
+
+    QHash<QString, QString> abbreviations;
+    for (const auto &teamValue : event.value("teams").toList()) {
+        const QVariantMap team = teamValue.toMap();
+        const QString abbreviation = team.value("abbreviation").toString();
+        if (!team.value("id").toString().isEmpty())
+            abbreviations.insert(team.value("id").toString(), abbreviation);
+        if (!team.value("name").toString().isEmpty())
+            abbreviations.insert(team.value("name").toString(), abbreviation);
+    }
+
+    QVariantList goals;
+    QVariantList cards;
+    const QString eventSport = event.value("sport").toString();
+    const bool playDetails = eventSport.isEmpty() || eventSport == "soccer"
+                             || eventSport == "hockey";
+    for (const auto &keyEventValue : root.value("keyEvents").toArray()) {
+        if (!playDetails)
+            break;
+        const QJsonObject keyEvent = keyEventValue.toObject();
+        const QJsonObject type = keyEvent.value("type").toObject();
+        const QString typeText = type.value("text").toString();
+        const QString text = keyEvent.value("text").toString();
+        const QString clock = keyEvent.value("clock").toObject()
+                                  .value("displayValue").toString();
+        const QJsonObject team = keyEvent.value("team").toObject();
+        const QString teamName = team.value("displayName").toString();
+        const QString teamId = team.value("id").toString();
+        const QString abbreviation = abbreviations.value(teamId,
+                                                          abbreviations.value(teamName));
+
+        const QJsonArray participants = keyEvent.value("participants").toArray();
+        auto playerName = [&participants](int index) {
+            if (index >= participants.size())
+                return QString();
+            return participants.at(index).toObject().value("athlete").toObject()
+                       .value("displayName").toString();
+        };
+
+        const QString player = playerName(0);
+        const bool goal = keyEvent.value("scoringPlay").toBool()
+                          || typeText.contains("Goal", Qt::CaseInsensitive);
+        const bool card = typeText.contains("Card", Qt::CaseInsensitive);
+
+        if (goal) {
+            QVariantMap item;
+            item.insert("clock", clock);
+            item.insert("type", typeText);
+            item.insert("scorer", player);
+            item.insert("assist", playerName(1));
+            item.insert("teamName", teamName);
+            item.insert("teamAbbreviation", abbreviation);
+            item.insert("ownGoal", typeText.contains("Own Goal", Qt::CaseInsensitive)
+                                      || text.contains("own goal", Qt::CaseInsensitive));
+            item.insert("penalty", typeText.contains("Penalty", Qt::CaseInsensitive));
+            item.insert("text", text);
+            goals.append(item);
+        } else if (card) {
+            QVariantMap item;
+            item.insert("clock", clock);
+            item.insert("type", typeText);
+            item.insert("player", player);
+            item.insert("teamName", teamName);
+            item.insert("teamAbbreviation", abbreviation);
+            item.insert("red", typeText.contains("Red", Qt::CaseInsensitive));
+            cards.append(item);
+        }
+    }
+
+    QVariantMap result;
+    result.insert("goals", goals);
+    result.insert("cards", cards);
+
+    const QJsonArray boxTeams = root.value("boxscore").toObject()
+                                    .value("teams").toArray();
+    QVariantList stats;
+    if (!boxTeams.isEmpty()) {
+        QHash<QString, QString> homeStats;
+        QHash<QString, QString> awayStats;
+        for (const auto &teamValue : boxTeams) {
+            const QJsonObject team = teamValue.toObject();
+            QHash<QString, QString> &target = team.value("homeAway").toString() == "home"
+                                                  ? homeStats : awayStats;
+            for (const auto &statValue : team.value("statistics").toArray()) {
+                const QJsonObject stat = statValue.toObject();
+                const QString name = stat.value("name").toString();
+                if (!name.isEmpty())
+                    target.insert(name, stat.value("displayValue").toString());
+            }
+        }
+
+        struct StatKey {
+            const char *name;
+            const char *label;
+            bool percent;
+        };
+        static const StatKey keys[] = {
+            {"possessionPct", "Possession", true},
+            {"totalShots", "Shots", false},
+            {"shotsOnTarget", "Shots on target", false},
+            {"wonCorners", "Corners", false},
+            {"foulsCommitted", "Fouls", false},
+            {"offsides", "Offsides", false},
+            {"yellowCards", "Yellow cards", false},
+            {"redCards", "Red cards", false},
+            {"saves", "Saves", false},
+        };
+
+        for (const auto &key : keys) {
+            const QString name = QString::fromLatin1(key.name);
+            if (!homeStats.contains(name) && !awayStats.contains(name))
+                continue;
+            QString homeValue = homeStats.value(name);
+            QString awayValue = awayStats.value(name);
+            if (key.percent) {
+                if (!homeValue.isEmpty())
+                    homeValue += QStringLiteral("%");
+                if (!awayValue.isEmpty())
+                    awayValue += QStringLiteral("%");
+            }
+            QVariantMap row;
+            row.insert("label", QString::fromLatin1(key.label));
+            row.insert("home", homeValue);
+            row.insert("away", awayValue);
+            stats.append(row);
+        }
+    }
+    result.insert("stats", stats);
+
+    return result;
 }
 
 void Backend::retranslate()
@@ -1058,7 +1345,8 @@ QStringList Backend::standingsHeadersFor(const QString &sport)
 }
 
 QVariantList Backend::liveEventsFrom(const QVariantList &scoreboardEvents, const QString &sport,
-                                     const QString &sportName, const QString &leagueName)
+                                     const QString &leagueSlug, const QString &sportName,
+                                     const QString &leagueName)
 {
     QVariantList live;
     for (const auto &event : scoreboardEvents) {
@@ -1066,6 +1354,7 @@ QVariantList Backend::liveEventsFrom(const QVariantList &scoreboardEvents, const
         if (item.value("state").toString() != "in")
             continue;
         item.insert("sport", sport);
+        item.insert("league", leagueSlug);
         item.insert("leagueName", leagueName);
         item.insert("sectionLabel", sportName.isEmpty()
                                        ? leagueName
@@ -1109,6 +1398,7 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
             const QJsonObject athlete = competitor.value("athlete").toObject();
 
             QVariantMap item;
+            item.insert("id", team.value("id").toString());
             item.insert("home", competitor.value("homeAway").toString() == "home");
             item.insert("homeAway", competitor.value("homeAway").toString());
             item.insert("name", team.value("displayName").toString(
@@ -1128,6 +1418,54 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
         // then home, like a scoreboard.
         orderAwayFirst(&teams);
 
+        QHash<QString, QString> abbreviations;
+        for (const auto &teamValue : teams) {
+            const QVariantMap team = teamValue.toMap();
+            abbreviations.insert(team.value("id").toString(),
+                                 team.value("abbreviation").toString());
+        }
+
+        QVariantList goals;
+        QVariantList cards;
+        for (const auto &detailValue : competition.value("details").toArray()) {
+            const QJsonObject detail = detailValue.toObject();
+            const QString clock = detail.value("clock").toObject()
+                                      .value("displayValue").toString();
+            const QString teamId = detail.value("team").toObject().value("id").toString();
+            const QJsonArray athletes = detail.value("athletesInvolved").toArray();
+            const QString athlete = athletes.isEmpty()
+                                        ? QString()
+                                        : athletes.first().toObject()
+                                              .value("displayName").toString();
+
+            const QString typeText = detail.value("type").toObject()
+                                         .value("text").toString();
+            if (detail.value("scoringPlay").toBool()
+                && (typeText.contains("Goal", Qt::CaseInsensitive)
+                    || typeText.contains("Penalty", Qt::CaseInsensitive))) {
+                QVariantMap goal;
+                goal.insert("clock", clock);
+                goal.insert("type", typeText);
+                goal.insert("scorer", athlete);
+                goal.insert("teamId", teamId);
+                goal.insert("teamAbbreviation", abbreviations.value(teamId));
+                goal.insert("ownGoal", detail.value("ownGoal").toBool());
+                goal.insert("penalty", detail.value("penaltyKick").toBool());
+                goals.append(goal);
+            }
+
+            if (detail.value("yellowCard").toBool() || detail.value("redCard").toBool()) {
+                QVariantMap card;
+                card.insert("clock", clock);
+                card.insert("type", typeText);
+                card.insert("player", athlete);
+                card.insert("teamId", teamId);
+                card.insert("teamAbbreviation", abbreviations.value(teamId));
+                card.insert("red", detail.value("redCard").toBool());
+                cards.append(card);
+            }
+        }
+
         QVariantMap item;
         item.insert("id", event.value("id").toString());
         item.insert("name", event.value("name").toString());
@@ -1138,6 +1476,8 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
         item.insert("shortDetail", type.value("shortDetail").toString());
         item.insert("completed", type.value("completed").toBool());
         item.insert("teams", teams);
+        item.insert("goals", goals);
+        item.insert("cards", cards);
         item.insert("venue", competition.value("venue").toObject().value("fullName").toString());
         events.append(item);
     }

@@ -29,114 +29,115 @@ ApplicationWindow {
     function closeOverlays() {
         win.helpVisible = false
         win.settingsVisible = false
+        backend.closeMatch()
     }
 
     Shortcut {
         sequence: "j"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: win.stepLeague(1)
     }
     Shortcut {
         sequence: "k"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: win.stepLeague(-1)
     }
     Shortcut {
         sequence: "Down"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: win.stepLeague(1)
     }
     Shortcut {
         sequence: "Up"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: win.stepLeague(-1)
     }
     Shortcut {
         sequence: "h"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.previousDay()
     }
     Shortcut {
         sequence: "l"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.nextDay()
     }
     Shortcut {
         sequence: "Left"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.previousDay()
     }
     Shortcut {
         sequence: "Right"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.nextDay()
     }
     Shortcut {
         sequence: "t"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode && !backend.standingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.today()
     }
     Shortcut {
         sequence: "d"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.toggleLive()
     }
     Shortcut {
         sequence: "c"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.toggleStandings()
     }
     Shortcut {
         sequence: "s"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !backend.matchOpen
         onActivated: win.settingsVisible = !win.settingsVisible
     }
     Shortcut {
         sequence: "r"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.refresh()
     }
     Shortcut {
         sequence: "Space"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.refresh()
     }
     Shortcut {
         sequence: "/"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: sidebar.focusSearch()
     }
     Shortcut {
         sequence: "q"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: Qt.quit()
     }
     Shortcut {
         sequence: "?"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.settingsVisible
+        enabled: !sidebar.searching && !win.settingsVisible && !backend.matchOpen
         onActivated: win.helpVisible = !win.helpVisible
     }
     Shortcut {
         sequence: "Escape"
         context: Qt.ApplicationShortcut
-        enabled: win.helpVisible || win.settingsVisible
+        enabled: win.helpVisible || win.settingsVisible || backend.matchOpen
         onActivated: win.closeOverlays()
     }
 
@@ -147,6 +148,7 @@ ApplicationWindow {
         repeat: true
         running: (backend.liveMode || backend.liveCount > 0) && win.visible
                  && !win.helpVisible && !win.settingsVisible && !backend.standingsVisible
+                 && !backend.matchOpen
         onTriggered: backend.refresh()
     }
 
@@ -414,6 +416,7 @@ ApplicationWindow {
 
                             delegate: EventCard {
                                 width: games.width - 12
+                                onActivated: backend.openMatch(modelData.id)
                             }
                         }
 
@@ -638,6 +641,12 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    MatchOverlay {
+        anchors.fill: parent
+        visible: backend.matchOpen
+        onClosed: backend.closeMatch()
     }
 
     SettingsOverlay {

@@ -135,6 +135,89 @@ const char *basketballStandings = R"({
   }]
 })";
 
+const char *soccerMatchPayload = R"({
+  "events": [{
+    "id": "42",
+    "name": "Strasbourg at Toulouse",
+    "date": "2026-11-06T20:00Z",
+    "status": {"type": {"state": "post", "detail": "FT", "shortDetail": "FT",
+                        "completed": true}},
+    "competitions": [{
+      "status": {"type": {"state": "post", "detail": "FT", "shortDetail": "FT",
+                          "completed": true}},
+      "competitors": [
+        {"homeAway": "home", "winner": true, "score": "3",
+         "team": {"id": "179", "displayName": "Toulouse", "abbreviation": "TLS",
+                  "color": "123456", "logo": "tls.png"}},
+        {"homeAway": "away", "winner": false, "score": "1",
+         "team": {"id": "180", "displayName": "Strasbourg", "abbreviation": "STR",
+                  "color": "654321", "logo": "str.png"}}
+      ],
+      "details": [
+        {"clock": {"displayValue": "27'"}, "type": {"text": "Yellow Card"},
+         "team": {"id": "180"}, "yellowCard": true,
+         "athletesInvolved": [{"displayName": "Karim Coulibaly"}]},
+        {"clock": {"displayValue": "45'+1'"}, "type": {"text": "Goal"},
+         "team": {"id": "179"}, "scoringPlay": true,
+         "athletesInvolved": [{"displayName": "Santiago Hidalgo"}]},
+        {"clock": {"displayValue": "56'"}, "type": {"text": "Goal - Header"},
+         "team": {"id": "179"}, "scoringPlay": true,
+         "athletesInvolved": [{"displayName": "Mark McKenzie"}]},
+        {"clock": {"displayValue": "67'"}, "type": {"text": "Goal"},
+         "team": {"id": "180"}, "scoringPlay": true,
+         "athletesInvolved": [{"displayName": "Giovanni Reyna"}]},
+        {"clock": {"displayValue": "76'"}, "type": {"text": "Goal - Volley"},
+         "team": {"id": "179"}, "scoringPlay": true,
+         "athletesInvolved": [{"displayName": "Thomas Jørgensen"}]}
+      ]
+    }]
+  }]
+})";
+
+const char *matchSummaryPayload = R"({
+  "keyEvents": [
+    {"clock": {"displayValue": "45'+1'"}, "type": {"text": "Goal"},
+     "scoringPlay": true, "team": {"id": "179", "displayName": "Toulouse"},
+     "participants": [
+       {"athlete": {"displayName": "Santiago Hidalgo"}},
+       {"athlete": {"displayName": "Sion Oppong"}}
+     ],
+     "text": "Goal! Toulouse 1, Strasbourg 0. Santiago Hidalgo assisted by Sion Oppong."},
+    {"clock": {"displayValue": "67'"}, "type": {"text": "Goal"},
+     "scoringPlay": true, "team": {"id": "180", "displayName": "Strasbourg"},
+     "participants": [{"athlete": {"displayName": "Giovanni Reyna"}}],
+     "text": "Goal! Toulouse 2, Strasbourg 1. Giovanni Reyna."},
+    {"clock": {"displayValue": "27'"}, "type": {"text": "Yellow Card"},
+     "team": {"id": "180", "displayName": "Strasbourg"},
+     "participants": [{"athlete": {"displayName": "Karim Coulibaly"}}],
+     "text": "Karim Coulibaly is shown the yellow card."}
+  ],
+  "boxscore": {"teams": [
+    {"homeAway": "home", "statistics": [
+      {"name": "possessionPct", "displayValue": "47.3"},
+      {"name": "totalShots", "displayValue": "10"},
+      {"name": "shotsOnTarget", "displayValue": "5"},
+      {"name": "wonCorners", "displayValue": "7"},
+      {"name": "foulsCommitted", "displayValue": "16"},
+      {"name": "offsides", "displayValue": "1"},
+      {"name": "yellowCards", "displayValue": "3"},
+      {"name": "redCards", "displayValue": "0"},
+      {"name": "saves", "displayValue": "3"}
+    ]},
+    {"homeAway": "away", "statistics": [
+      {"name": "possessionPct", "displayValue": "52.7"},
+      {"name": "totalShots", "displayValue": "12"},
+      {"name": "shotsOnTarget", "displayValue": "6"},
+      {"name": "wonCorners", "displayValue": "4"},
+      {"name": "foulsCommitted", "displayValue": "11"},
+      {"name": "offsides", "displayValue": "2"},
+      {"name": "yellowCards", "displayValue": "1"},
+      {"name": "redCards", "displayValue": "0"},
+      {"name": "saves", "displayValue": "2"}
+    ]}
+  ]}
+})";
+
 void writeFile(const QString &path, const QByteArray &contents)
 {
     QFile file(path);
@@ -256,11 +339,12 @@ private slots:
         const QVariantList scoreboard = Backend::parseScoreboard(nbaPayload, &error);
         QVERIFY(error.isEmpty());
 
-        const QVariantList live = Backend::liveEventsFrom(scoreboard, "basketball",
+        const QVariantList live = Backend::liveEventsFrom(scoreboard, "basketball", "nba",
                                                           "Basketball", "NBA");
         QCOMPARE(live.size(), 1);
         const QVariantMap event = live.first().toMap();
         QCOMPARE(event.value("sport").toString(), QStringLiteral("basketball"));
+        QCOMPARE(event.value("league").toString(), QStringLiteral("nba"));
         QCOMPARE(event.value("leagueName").toString(), QStringLiteral("NBA"));
         QCOMPARE(event.value("sectionLabel").toString(), QStringLiteral("Basketball · NBA"));
         QCOMPARE(Backend::liveCountOf(live), 1);
@@ -268,7 +352,8 @@ private slots:
         // A schedule with nothing in progress contributes no live events.
         const QVariantList upcoming = Backend::parseScoreboard(tournamentPayload, &error);
         QVERIFY(error.isEmpty());
-        QVERIFY(Backend::liveEventsFrom(upcoming, "golf", "Golf", "PGA Tour").isEmpty());
+        QVERIFY(Backend::liveEventsFrom(upcoming, "golf", "pga",
+                                        "Golf", "PGA Tour").isEmpty());
     }
 
     void parseStandingsSortsAndPicksColumns()
@@ -339,6 +424,74 @@ private slots:
 
         backend.setStandings(false);
         QVERIFY(!backend.standingsVisible());
+    }
+
+    void scoreboardReadsGoalsAndCards()
+    {
+        QString error;
+        const QVariantList events = Backend::parseScoreboard(soccerMatchPayload, &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(events.size(), 1);
+
+        const QVariantMap event = events.first().toMap();
+        const QVariantList teams = event.value("teams").toList();
+        QCOMPARE(teams.size(), 2);
+        QCOMPARE(teams.first().toMap().value("id").toString(), QStringLiteral("180"));
+        QCOMPARE(teams.first().toMap().value("abbreviation").toString(),
+                 QStringLiteral("STR"));
+
+        const QVariantList goals = event.value("goals").toList();
+        QCOMPARE(goals.size(), 4);
+        QCOMPARE(goals.at(0).toMap().value("scorer").toString(),
+                 QStringLiteral("Santiago Hidalgo"));
+        QCOMPARE(goals.at(0).toMap().value("teamAbbreviation").toString(),
+                 QStringLiteral("TLS"));
+        QCOMPARE(goals.at(0).toMap().value("clock").toString(),
+                 QStringLiteral("45'+1'"));
+        QCOMPARE(goals.at(2).toMap().value("teamAbbreviation").toString(),
+                 QStringLiteral("STR"));
+
+        const QVariantList cards = event.value("cards").toList();
+        QCOMPARE(cards.size(), 1);
+        QCOMPARE(cards.first().toMap().value("player").toString(),
+                 QStringLiteral("Karim Coulibaly"));
+        QVERIFY(!cards.first().toMap().value("red").toBool());
+    }
+
+    void matchSummaryReadsGoalsAndStats()
+    {
+        QString error;
+        const QVariantList events = Backend::parseScoreboard(soccerMatchPayload, &error);
+        QVERIFY(error.isEmpty());
+
+        const QVariantMap parsed = Backend::parseMatchSummary(matchSummaryPayload,
+                                                              events.first().toMap(), &error);
+        QVERIFY(error.isEmpty());
+
+        const QVariantList goals = parsed.value("goals").toList();
+        QCOMPARE(goals.size(), 2);
+        QCOMPARE(goals.at(0).toMap().value("scorer").toString(),
+                 QStringLiteral("Santiago Hidalgo"));
+        QCOMPARE(goals.at(0).toMap().value("assist").toString(),
+                 QStringLiteral("Sion Oppong"));
+        QCOMPARE(goals.at(0).toMap().value("teamAbbreviation").toString(),
+                 QStringLiteral("TLS"));
+        QCOMPARE(goals.at(1).toMap().value("teamAbbreviation").toString(),
+                 QStringLiteral("STR"));
+
+        const QVariantList cards = parsed.value("cards").toList();
+        QCOMPARE(cards.size(), 1);
+        QCOMPARE(cards.first().toMap().value("player").toString(),
+                 QStringLiteral("Karim Coulibaly"));
+
+        const QVariantList stats = parsed.value("stats").toList();
+        QCOMPARE(stats.size(), 9);
+        QCOMPARE(stats.first().toMap().value("label").toString(),
+                 QStringLiteral("Possession"));
+        QCOMPARE(stats.first().toMap().value("home").toString(),
+                 QStringLiteral("47.3%"));
+        QCOMPARE(stats.first().toMap().value("away").toString(),
+                 QStringLiteral("52.7%"));
     }
 
     void leaguesStartEnabledAndPersist()

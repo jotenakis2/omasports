@@ -14,6 +14,12 @@ Live scores and fixtures for every sport, in one window, from the keyboard.
 
   ![omasports showing live scores](screenshot-live.png)
 
+- Goal scorers under the score, and a match sheet on click with goals, assists,
+  cards, and key statistics.
+
+  ![omasports showing goal scorers under a score](screenshot-scorers.png)
+  ![omasports match sheet with goals, cards, and statistics](screenshot-match.png)
+
 - A **Standings** view (`C`) shows the table for the selected league, with
   positions, played, wins, draws, losses, goal difference, and points, grouped
   into conferences or pools when the feed splits them.
@@ -65,6 +71,7 @@ Adjust `Exec=` in the `.desktop` file if the binary lives somewhere other than
 | --- | --- |
 | `D` | Live view: every game in progress |
 | `C` | Standings for the selected league |
+| Click a match | Open its sheet |
 | `S` | Choose which leagues to show |
 | `J` / `K`, `↓` / `↑` | Next / previous league |
 | `H` / `L`, `←` / `→` | Previous / next day |
@@ -90,9 +97,9 @@ bin/build   # qmake6 + make into build/omasports
 bin/test    # Qt Test suite, offscreen
 ```
 
-The scoreboard and standings parsers, the league catalog, league filtering,
-persistence, and day navigation are covered by tests that never touch the
-network: `Backend` takes an offline flag for exactly that.
+The scoreboard, match summary, and standings parsers, the league catalog,
+league filtering, persistence, and day navigation are covered by tests that
+never touch the network: `Backend` takes an offline flag for exactly that.
 
 Adding a league is one line in the `catalog` table in `src/backend.cpp`, using
 ESPN's sport and league slugs. Its scoreboard lives at
@@ -110,6 +117,7 @@ src/Main.qml            window, header, keyboard, states
 src/LeagueSidebar.qml   league list, sport sections, search
 src/EventCard.qml       one game or event
 src/StandingsView.qml   the league table
+src/MatchOverlay.qml    the match sheet
 src/TeamBadge.qml       crest with an abbreviation fallback
 src/ActionButton.qml    flat theme-following button
 src/LogoMark.qml        the score-bar mark, in the live accent

@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 
-// One game: the state on the left, both sides with their scores, and for
-// tournaments and races, which have no two sides, the event itself.
+// One game: the state on the left, both sides with their scores, the scorers
+// underneath when the feed reports them, and for tournaments and races the
+// event itself. Clicking opens the full match sheet.
 Rectangle {
     id: card
 
@@ -10,10 +11,28 @@ Rectangle {
 
     readonly property bool live: modelData.state === "in"
     readonly property bool paired: modelData.teams && modelData.teams.length === 2
+    readonly property var goals: modelData.goals || []
 
-    implicitHeight: paired ? 84 : 68
+    signal activated()
+
+    implicitHeight: paired ? pairedContent.implicitHeight + 24 : 70
     radius: theme.radius
     color: theme.card
+
+    Rectangle {
+        anchors.fill: parent
+        radius: theme.radius
+        color: theme.foreground
+        opacity: hover.hovered ? 0.035 : 0
+        Behavior on opacity {
+            NumberAnimation { duration: 90 }
+        }
+    }
+
+    HoverHandler {
+        id: hover
+        cursorShape: Qt.PointingHandCursor
+    }
 
     Rectangle {
         visible: card.live
@@ -27,99 +46,115 @@ Rectangle {
         color: theme.accent
     }
 
-    RowLayout {
+    ColumnLayout {
+        id: pairedContent
         visible: card.paired
-        anchors.fill: parent
-        anchors.leftMargin: 18
-        anchors.rightMargin: 16
-        anchors.topMargin: 10
-        anchors.bottomMargin: 10
-        spacing: 14
+        x: 14
+        y: 12
+        width: parent.width - 28
+        spacing: 4
 
-        Item {
-            Layout.preferredWidth: 78
-            Layout.fillHeight: true
-
-            Column {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width
-                spacing: 3
-
-                Text {
-                    width: parent.width
-                    text: card.statusText()
-                    horizontalAlignment: Text.AlignHCenter
-                    color: card.live ? theme.accent : theme.mutedForeground
-                    font.pixelSize: 11
-                    font.bold: card.live
-                    wrapMode: Text.WordWrap
-                }
-
-                Text {
-                    visible: card.live
-                    width: parent.width
-                    text: qsTr("Live")
-                    horizontalAlignment: Text.AlignHCenter
-                    color: theme.accent
-                    font.pixelSize: 9
-                    font.bold: true
-                }
-            }
-        }
-
-        ColumnLayout {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.alignment: Qt.AlignVCenter
-            spacing: 6
+            spacing: 14
 
-            Repeater {
-                model: card.modelData.teams
+            Item {
+                Layout.preferredWidth: 76
+                Layout.fillHeight: true
 
-                delegate: RowLayout {
-                    required property var modelData
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width
+                    spacing: 3
 
-                    Layout.fillWidth: true
-                    spacing: 9
-
-                    TeamBadge {
-                        team: modelData
-                        Layout.preferredWidth: 24
-                        Layout.preferredHeight: 24
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 0
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: modelData.name
-                            color: theme.foreground
-                            font.pixelSize: 14
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            visible: text.length > 0
-                            text: card.recordLabel(modelData.record)
-                            color: theme.mutedForeground
-                            font.pixelSize: 10
-                            elide: Text.ElideRight
-                        }
+                    Text {
+                        width: parent.width
+                        text: card.statusText()
+                        horizontalAlignment: Text.AlignHCenter
+                        color: card.live ? theme.accent : theme.mutedForeground
+                        font.pixelSize: 11
+                        font.bold: card.live
+                        wrapMode: Text.WordWrap
                     }
 
                     Text {
-                        Layout.preferredWidth: 46
-                        Layout.alignment: Qt.AlignVCenter
-                        horizontalAlignment: Text.AlignRight
-                        text: card.modelData.state === "pre" ? "" : modelData.score
-                        color: modelData.winner ? theme.accent : theme.foreground
-                        font.pixelSize: 20
+                        visible: card.live
+                        width: parent.width
+                        text: qsTr("Live")
+                        horizontalAlignment: Text.AlignHCenter
+                        color: theme.accent
+                        font.pixelSize: 9
                         font.bold: true
                     }
                 }
             }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.alignment: Qt.AlignVCenter
+                spacing: 6
+
+                Repeater {
+                    model: card.modelData.teams
+
+                    delegate: RowLayout {
+                        required property var modelData
+
+                        Layout.fillWidth: true
+                        spacing: 9
+
+                        TeamBadge {
+                            team: modelData
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: modelData.name
+                                color: theme.foreground
+                                font.pixelSize: 14
+                                elide: Text.ElideRight
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                visible: text.length > 0
+                                text: card.recordLabel(modelData.record)
+                                color: theme.mutedForeground
+                                font.pixelSize: 10
+                                elide: Text.ElideRight
+                            }
+                        }
+
+                        Text {
+                            Layout.preferredWidth: 46
+                            Layout.alignment: Qt.AlignVCenter
+                            horizontalAlignment: Text.AlignRight
+                            text: card.modelData.state === "pre" ? "" : modelData.score
+                            color: modelData.winner ? theme.accent : theme.foreground
+                            font.pixelSize: 20
+                            font.bold: true
+                        }
+                    }
+                }
+            }
+        }
+
+        Text {
+            Layout.fillWidth: true
+            Layout.leftMargin: 90
+            visible: card.goals.length > 0
+            text: card.goalsText()
+            color: theme.mutedForeground
+            font.pixelSize: 10
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
+            elide: Text.ElideRight
         }
     }
 
@@ -154,6 +189,10 @@ Rectangle {
             font.pixelSize: 10
             elide: Text.ElideRight
         }
+    }
+
+    TapHandler {
+        onTapped: card.activated()
     }
 
     function statusText() {
@@ -197,5 +236,28 @@ Rectangle {
     function recordLabel(record) {
         translator.language
         return backend.recordLabel(modelData.sport || backend.league.sport, record)
+    }
+
+    function goalIcon() {
+        var sport = modelData.sport || backend.league.sport
+        return sport === "hockey" ? "🏒" : "⚽"
+    }
+
+    function goalsText() {
+        if (!modelData.goals || modelData.goals.length === 0)
+            return ""
+        var parts = []
+        for (var i = 0; i < modelData.goals.length; ++i) {
+            var goal = modelData.goals[i]
+            var text = goal.clock + " " + (goal.scorer || goal.type)
+            if (goal.teamAbbreviation)
+                text += " (" + goal.teamAbbreviation + ")"
+            if (goal.ownGoal)
+                text += " " + qsTr("(OG)")
+            else if (goal.penalty)
+                text += " " + qsTr("(pen)")
+            parts.push(text)
+        }
+        return goalIcon() + " " + parts.join(" · ")
     }
 }

@@ -6,6 +6,7 @@
         <file alias="HelpOverlay.qml">HelpOverlay.qml</file>
         <file alias="LeagueSidebar.qml">LeagueSidebar.qml</file>
         <file alias="LogoMark.qml">LogoMark.qml</file>
+        <file alias="MatchOverlay.qml">MatchOverlay.qml</file>
         <file alias="SettingsOverlay.qml">SettingsOverlay.qml</file>
         <file alias="StandingsView.qml">StandingsView.qml</file>
         <file alias="TeamBadge.qml">TeamBadge.qml</file>
