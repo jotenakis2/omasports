@@ -113,12 +113,26 @@ Rectangle {
                             Layout.fillWidth: true
                             spacing: 0
 
-                            Text {
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: modelData.name
-                                color: theme.foreground
-                                font.pixelSize: 14
-                                elide: Text.ElideRight
+                                spacing: 8
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.name
+                                    color: theme.foreground
+                                    font.pixelSize: 14
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    Layout.preferredWidth: 46
+                                    horizontalAlignment: Text.AlignRight
+                                    text: card.modelData.state === "pre" ? "" : modelData.score
+                                    color: modelData.winner ? theme.accent : theme.foreground
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                }
                             }
 
                             Text {
@@ -129,16 +143,6 @@ Rectangle {
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
                             }
-                        }
-
-                        Text {
-                            Layout.preferredWidth: 46
-                            Layout.alignment: Qt.AlignVCenter
-                            horizontalAlignment: Text.AlignRight
-                            text: card.modelData.state === "pre" ? "" : modelData.score
-                            color: modelData.winner ? theme.accent : theme.foreground
-                            font.pixelSize: 20
-                            font.bold: true
                         }
                     }
                 }
