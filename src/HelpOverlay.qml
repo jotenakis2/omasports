@@ -16,7 +16,7 @@ Item {
             { keys: "Space / R", action: qsTr("Refresh scores") },
             { keys: "/", action: qsTr("Search leagues") },
             { keys: "D", action: qsTr("All live scores") },
-            { keys: "S", action: qsTr("Choose sports") },
+            { keys: "S", action: qsTr("Choose leagues") },
             { keys: "Esc", action: qsTr("Close") },
             { keys: "Q", action: qsTr("Quit") }
         ]

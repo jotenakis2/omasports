@@ -56,66 +56,6 @@ const char *tournamentPayload = R"({
   }]
 })";
 
-const char *liveHeaderPayload = R"({
-  "sports": [{
-    "slug": "basketball",
-    "name": "Basketball",
-    "leagues": [{
-      "slug": "nba",
-      "name": "National Basketball Association",
-      "shortName": "NBA",
-      "events": [{
-        "id": "1",
-        "name": "Away Team at Home Team",
-        "shortName": "AWY @ HOM",
-        "date": "2026-11-06T00:00Z",
-        "status": "in",
-        "location": "Arena",
-        "fullStatus": {"type": {"state": "in", "detail": "2nd 4:32",
-                                "shortDetail": "2nd 4:32"}},
-        "competitors": [
-          {"homeAway": "home", "displayName": "Home Team", "name": "Home",
-           "abbreviation": "HOM", "score": "58", "winner": false,
-           "color": "112233", "logo": "home.png", "record": "5-2"},
-          {"homeAway": "away", "displayName": "Away Team", "name": "Away",
-           "abbreviation": "AWY", "score": "56", "winner": false,
-           "color": "445566", "logo": "away.png", "record": "3-4"}
-        ]
-      }, {
-        "id": "2",
-        "name": "Later at Game",
-        "date": "2026-11-06T03:00Z",
-        "status": "pre",
-        "fullStatus": {"type": {"state": "pre", "detail": "Tonight",
-                                "shortDetail": "9:00 PM"}},
-        "competitors": []
-      }]
-    }]
-  }, {
-    "slug": "hockey",
-    "name": "Ice Hockey",
-    "leagues": [{
-      "slug": "nhl",
-      "name": "National Hockey League",
-      "shortName": "NHL",
-      "events": [{
-        "id": "3",
-        "name": "Away at Home",
-        "date": "2026-11-06T01:00Z",
-        "status": "in",
-        "fullStatus": {"type": {"state": "in", "detail": "18:40 - 2nd",
-                                "shortDetail": "18:40 - 2nd"}},
-        "competitors": [
-          {"homeAway": "home", "displayName": "Home", "abbreviation": "HOM",
-           "score": "2", "winner": false, "record": "8-3-2"},
-          {"homeAway": "away", "displayName": "Away", "abbreviation": "AWY",
-           "score": "1", "winner": false, "record": "7-4-1"}
-        ]
-      }]
-    }]
-  }]
-})";
-
 void writeFile(const QString &path, const QByteArray &contents)
 {
     QFile file(path);
@@ -213,31 +153,6 @@ private slots:
         QVERIFY(!error.isEmpty());
     }
 
-    void parseLiveHeaderKeepsOnlyLiveGames()
-    {
-        QString error;
-        const QVariantList events = Backend::parseLiveHeader(liveHeaderPayload, &error);
-        QVERIFY(error.isEmpty());
-        QCOMPARE(events.size(), 2);
-        QCOMPARE(Backend::liveCountOf(events), 2);
-
-        const QVariantMap basketball = events.at(0).toMap();
-        QCOMPARE(basketball.value("sport").toString(), QStringLiteral("basketball"));
-        QCOMPARE(basketball.value("leagueName").toString(), QStringLiteral("NBA"));
-        QCOMPARE(basketball.value("sectionLabel").toString(), QStringLiteral("Basketball · NBA"));
-        QCOMPARE(basketball.value("venue").toString(), QStringLiteral("Arena"));
-        QCOMPARE(basketball.value("teams").toList().size(), 2);
-        // The header lists the home side first; the card reads away first.
-        QCOMPARE(basketball.value("teams").toList().first().toMap().value("name").toString(),
-                 QStringLiteral("Away Team"));
-        QCOMPARE(basketball.value("teams").toList().first().toMap().value("record").toString(),
-                 QStringLiteral("3-4"));
-
-        const QVariantMap hockey = events.at(1).toMap();
-        QCOMPARE(hockey.value("sectionLabel").toString(), QStringLiteral("Ice Hockey · NHL"));
-        QVERIFY(!hockey.value("teams").toList().isEmpty());
-    }
-
     void recordsReadAsSeasonTotals()
     {
         QTemporaryDir dir;
@@ -256,35 +171,60 @@ private slots:
         QCOMPARE(backend.recordLabel("soccer", ""), QString());
     }
 
-    void sportsStartEnabledAndPersist()
+    void liveEventsAreFilteredAndAnnotated()
+    {
+        QString error;
+        const QVariantList scoreboard = Backend::parseScoreboard(nbaPayload, &error);
+        QVERIFY(error.isEmpty());
+
+        const QVariantList live = Backend::liveEventsFrom(scoreboard, "basketball",
+                                                          "Basketball", "NBA");
+        QCOMPARE(live.size(), 1);
+        const QVariantMap event = live.first().toMap();
+        QCOMPARE(event.value("sport").toString(), QStringLiteral("basketball"));
+        QCOMPARE(event.value("leagueName").toString(), QStringLiteral("NBA"));
+        QCOMPARE(event.value("sectionLabel").toString(), QStringLiteral("Basketball · NBA"));
+        QCOMPARE(Backend::liveCountOf(live), 1);
+
+        // A schedule with nothing in progress contributes no live events.
+        const QVariantList upcoming = Backend::parseScoreboard(tournamentPayload, &error);
+        QVERIFY(error.isEmpty());
+        QVERIFY(Backend::liveEventsFrom(upcoming, "golf", "Golf", "PGA Tour").isEmpty());
+    }
+
+    void leaguesStartEnabledAndPersist()
     {
         QTemporaryDir dir;
         const QString settings = dir.filePath("settings.ini");
 
         {
             Backend backend(settings, false);
-            QCOMPARE(backend.sports().size(), 13);
-            QCOMPARE(backend.enabledSports().size(), 13);
-            QVERIFY(backend.enabledSports().contains("soccer"));
-            backend.setSportEnabled("soccer", false);
-            QVERIFY(!backend.enabledSports().contains("soccer"));
+            QCOMPARE(backend.leagues().size(), 33);
+            QCOMPARE(backend.enabledLeagues().size(), 33);
+            QCOMPARE(backend.settingsRows().size(), 46);
+            QVERIFY(backend.enabledLeagues().contains("soccer/eng.1"));
+
+            backend.setLeagueEnabled("soccer", "eng.1", false);
+            QVERIFY(!backend.enabledLeagues().contains("soccer/eng.1"));
         }
 
         Backend reopened(settings, false);
-        QVERIFY(!reopened.enabledSports().contains("soccer"));
-        QVERIFY(reopened.enabledSports().contains("basketball"));
-        QCOMPARE(reopened.sports().size(), 13);
+        QVERIFY(!reopened.enabledLeagues().contains("soccer/eng.1"));
+        QVERIFY(reopened.enabledLeagues().contains("soccer/esp.1"));
+        QCOMPARE(reopened.enabledLeagues().size(), 32);
     }
 
-    void hidingTheCurrentSportPicksAnother()
+    void hidingTheCurrentLeaguePicksAnother()
     {
         QTemporaryDir dir;
         Backend backend(dir.filePath("settings.ini"), false);
-        QCOMPARE(backend.league().value("sport").toString(), QStringLiteral("soccer"));
+        QCOMPARE(backend.league().value("league").toString(), QStringLiteral("eng.1"));
 
-        backend.setSportEnabled("soccer", false);
-        QVERIFY(backend.league().value("sport").toString() != QStringLiteral("soccer"));
-        QVERIFY(backend.enabledSports().contains(backend.league().value("sport").toString()));
+        backend.setLeagueEnabled("soccer", "eng.1", false);
+        QCOMPARE(backend.league().value("league").toString(), QStringLiteral("esp.1"));
+        QVERIFY(backend.enabledLeagues().contains(
+            backend.league().value("sport").toString() + "/"
+            + backend.league().value("league").toString()));
 
         // A hidden league cannot be selected from the list.
         const int previous = backend.leagueIndex();
@@ -292,17 +232,77 @@ private slots:
         QCOMPARE(backend.leagueIndex(), previous);
     }
 
-    void hidingEverySportLeavesTheBoardEmpty()
+    void hidingASportHidesItsLeagues()
     {
         QTemporaryDir dir;
         Backend backend(dir.filePath("settings.ini"), false);
-        backend.setAllSportsEnabled(false);
-        QVERIFY(backend.enabledSports().isEmpty());
-        QVERIFY(backend.events().isEmpty());
-        QCOMPARE(backend.status(), QStringLiteral("ready"));
+        backend.setSportLeaguesEnabled("soccer", false);
 
-        backend.setAllSportsEnabled(true);
-        QCOMPARE(backend.enabledSports().size(), 13);
+        QCOMPARE(backend.enabledLeagues().size(), 20);
+        QCOMPARE(backend.league().value("sport").toString(), QStringLiteral("football"));
+        QCOMPARE(backend.league().value("league").toString(), QStringLiteral("nfl"));
+
+        bool soccerRow = false;
+        for (const auto &value : backend.settingsRows()) {
+            const QVariantMap row = value.toMap();
+            if (row.value("type").toString() != "sport"
+                || row.value("sport").toString() != "soccer")
+                continue;
+            soccerRow = true;
+            QCOMPARE(row.value("leagues").toInt(), 13);
+            QCOMPARE(row.value("enabledCount").toInt(), 0);
+            QCOMPARE(row.value("allEnabled").toBool(), false);
+        }
+        QVERIFY(soccerRow);
+
+        backend.setSportLeaguesEnabled("soccer", true);
+        QCOMPARE(backend.enabledLeagues().size(), 33);
+    }
+
+    void hidingEveryLeagueLeavesTheBoardEmpty()
+    {
+        QTemporaryDir dir;
+        const QString settings = dir.filePath("settings.ini");
+
+        {
+            Backend backend(settings, false);
+            backend.setAllLeaguesEnabled(false);
+            QVERIFY(backend.enabledLeagues().isEmpty());
+            QVERIFY(backend.events().isEmpty());
+            QCOMPARE(backend.status(), QStringLiteral("ready"));
+        }
+
+        // "None" is a choice, not an empty setting that reverts to all.
+        Backend reopened(settings, false);
+        QVERIFY(reopened.enabledLeagues().isEmpty());
+
+        reopened.setAllLeaguesEnabled(true);
+        QCOMPARE(reopened.enabledLeagues().size(), 33);
+    }
+
+    void olderSportChoiceSeedsLeagues()
+    {
+        QTemporaryDir dir;
+        const QString settings = dir.filePath("settings.ini");
+        {
+            QSettings store(settings, QSettings::IniFormat);
+            store.setValue("sports/enabled", QStringList{"basketball"});
+            store.sync();
+        }
+
+        {
+            Backend backend(settings, false);
+            QCOMPARE(backend.enabledLeagues().size(), 3);
+            QVERIFY(backend.enabledLeagues().contains("basketball/nba"));
+            QCOMPARE(backend.league().value("sport").toString(), QStringLiteral("basketball"));
+        }
+
+        QSettings store(settings, QSettings::IniFormat);
+        QVERIFY(!store.contains("sports/enabled"));
+        QVERIFY(store.contains("leagues/enabled"));
+
+        Backend reopened(settings, false);
+        QCOMPARE(reopened.enabledLeagues().size(), 3);
     }
 
     void liveModeTogglesOffline()

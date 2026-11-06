@@ -19,13 +19,13 @@ Rectangle {
     // order is the order they appear in, grouped by sport.
     property var model: {
         translator.language
-        var enabled = backend.enabledSports
+        var enabled = backend.enabledLeagues
         var all = backend.leagues
         var needle = query.trim().toLowerCase()
         var result = []
         for (var i = 0; i < all.length; ++i) {
             var league = all[i]
-            if (enabled.indexOf(league.sport) < 0)
+            if (enabled.indexOf(league.sport + "/" + league.league) < 0)
                 continue
             if (needle.length > 0
                     && league.name.toLowerCase().indexOf(needle) < 0
@@ -308,7 +308,7 @@ Rectangle {
                 visible: list.count === 0
                 text: sidebar.query.length > 0
                       ? qsTr("No leagues match “%1”").arg(sidebar.query)
-                      : qsTr("No sports selected")
+                      : qsTr("No leagues selected")
                 color: theme.mutedForeground
                 font.pixelSize: 12
             }

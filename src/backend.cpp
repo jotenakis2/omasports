@@ -12,6 +12,7 @@
 #include <QSet>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QTime>
 #include <QUrlQuery>
 
 #include <algorithm>
@@ -74,23 +75,9 @@ QString sportSlug(const CatalogEntry &entry)
     return QString::fromLatin1(entry.sport);
 }
 
-QStringList allSportSlugs()
+QString leagueKey(const QString &sport, const QString &league)
 {
-    QStringList slugs;
-    for (const auto &entry : catalog) {
-        const QString slug = sportSlug(entry);
-        if (!slugs.contains(slug))
-            slugs.append(slug);
-    }
-    return slugs;
-}
-
-bool isKnownSport(const QString &slug)
-{
-    for (const auto &entry : catalog)
-        if (slug == sportSlug(entry))
-            return true;
-    return false;
+    return sport + '/' + league;
 }
 
 QString teamLogo(const QJsonObject &team)
@@ -128,27 +115,6 @@ QString scoreString(const QJsonValue &score)
     return {};
 }
 
-// The header feed and the scoreboard feed spell a competitor differently: one
-// flattens the team fields onto the competitor.
-QVariantMap headerCompetitor(const QJsonObject &competitor)
-{
-    QVariantMap team;
-    team.insert("home", competitor.value("homeAway").toString() == "home");
-    team.insert("homeAway", competitor.value("homeAway").toString());
-    team.insert("name", competitor.value("displayName").toString());
-    team.insert("shortName", competitor.value("name").toString());
-    team.insert("abbreviation", competitor.value("abbreviation").toString());
-    team.insert("logo", competitor.value("logo").toString());
-    team.insert("color", competitor.value("color").toString());
-    team.insert("score", scoreString(competitor.value("score")));
-    team.insert("winner", competitor.value("winner").toBool());
-    QString record = competitor.value("record").toString();
-    if (record.isEmpty())
-        record = competitorRecord(competitor);
-    team.insert("record", record);
-    return team;
-}
-
 void orderAwayFirst(QVariantList *teams)
 {
     if (teams->size() != 2)
@@ -172,30 +138,51 @@ Backend::Backend(const QString &settingsPath, bool online, QObject *parent)
 {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
 
-    // No saved choice means every sport, so a fresh install has something to
-    // show. An explicitly saved empty list means the user hid them all.
-    const QStringList known = allSportSlugs();
-    if (settings.contains("sports/enabled")) {
-        const QStringList saved = settings.value("sports/enabled").toStringList();
-        for (const auto &slug : known)
-            if (saved.contains(slug))
-                m_enabledSports.append(slug);
+    // No saved choice means every league, so a fresh install has something to
+    // show. An explicitly saved empty list means the user hid them all. The
+    // older per-sport setting seeds the per-league one the first time.
+    QSet<QString> saved;
+    if (settings.contains("leagues/enabled")) {
+        for (const auto &key : settings.value("leagues/enabled").toStringList())
+            saved.insert(key);
+    } else if (settings.contains("sports/enabled")) {
+        const QStringList sports = settings.value("sports/enabled").toStringList();
+        for (const auto &entry : catalog) {
+            if (sports.contains(sportSlug(entry)))
+                saved.insert(leagueKey(sportSlug(entry), QString::fromLatin1(entry.league)));
+        }
+        settings.remove("sports/enabled");
     } else {
-        m_enabledSports = known;
+        for (const auto &entry : catalog)
+            saved.insert(leagueKey(sportSlug(entry), QString::fromLatin1(entry.league)));
+    }
+
+    // Keep only leagues the catalog still knows, in catalog order.
+    for (const auto &entry : catalog) {
+        const QString key = leagueKey(sportSlug(entry), QString::fromLatin1(entry.league));
+        if (saved.contains(key))
+            m_enabledLeagues.insert(key);
     }
 
     const QString sport = settings.value("league/sport").toString();
     const QString league = settings.value("league/id").toString();
     const bool found = selectBySlug(sport, league);
-    if (!found || !m_enabledSports.contains(this->league().value("sport").toString())) {
+    if (!found || !leagueEnabled(this->league().value("sport").toString(),
+                                this->league().value("league").toString())) {
         const int first = firstEnabledLeague();
         if (first >= 0) {
             m_leagueIndex = first;
-            saveSelection();
+            const QVariantMap selected = this->league();
+            settings.setValue("league/sport", selected.value("sport"));
+            settings.setValue("league/id", selected.value("league"));
         } else if (!found) {
             m_leagueIndex = 0;
         }
     }
+
+    // Persist the normalized list, including an empty one, so "none" survives
+    // the next launch instead of falling back to every league.
+    settings.setValue("leagues/enabled", enabledLeagues());
 }
 
 QVariantMap Backend::league() const
@@ -215,35 +202,65 @@ QString Backend::updatedLabel() const
     return QLocale().toString(m_updatedAt.time(), QLocale::ShortFormat);
 }
 
-QVariantList Backend::sports() const
+QVariantList Backend::settingsRows() const
 {
-    QHash<QString, int> counts;
-    for (const auto &entry : catalog)
-        ++counts[sportSlug(entry)];
-
-    QVariantList sports;
-    QSet<QString> seen;
+    QVariantList rows;
+    QSet<QString> seenSports;
     for (const auto &entry : catalog) {
-        const QString slug = sportSlug(entry);
-        if (seen.contains(slug))
-            continue;
-        seen.insert(slug);
+        const QString sport = sportSlug(entry);
+        const QString league = QString::fromLatin1(entry.league);
 
-        QVariantMap sport;
-        sport.insert("slug", slug);
-        sport.insert("name", tr(entry.sportName));
-        sport.insert("leagues", counts.value(slug));
-        sport.insert("enabled", m_enabledSports.contains(slug));
-        sports.append(sport);
+        if (!seenSports.contains(sport)) {
+            seenSports.insert(sport);
+            int total = 0;
+            int enabled = 0;
+            for (const auto &candidate : catalog) {
+                if (sportSlug(candidate) != sport)
+                    continue;
+                ++total;
+                if (m_enabledLeagues.contains(
+                        leagueKey(sport, QString::fromLatin1(candidate.league))))
+                    ++enabled;
+            }
+
+            QVariantMap row;
+            row.insert("type", "sport");
+            row.insert("sport", sport);
+            row.insert("name", tr(entry.sportName));
+            row.insert("leagues", total);
+            row.insert("enabledCount", enabled);
+            row.insert("allEnabled", enabled == total);
+            rows.append(row);
+        }
+
+        QVariantMap row;
+        row.insert("type", "league");
+        row.insert("sport", sport);
+        row.insert("league", league);
+        row.insert("name", QString::fromUtf8(entry.name));
+        row.insert("enabled", m_enabledLeagues.contains(leagueKey(sport, league)));
+        rows.append(row);
     }
-    return sports;
+    return rows;
+}
+
+QStringList Backend::enabledLeagues() const
+{
+    QStringList keys;
+    for (const auto &entry : catalog) {
+        const QString key = leagueKey(sportSlug(entry), QString::fromLatin1(entry.league));
+        if (m_enabledLeagues.contains(key))
+            keys.append(key);
+    }
+    return keys;
 }
 
 void Backend::selectLeague(int index)
 {
     if (index < 0 || index >= m_leagues.size())
         return;
-    if (!m_enabledSports.contains(m_leagues.at(index).toMap().value("sport").toString()))
+    const QVariantMap entry = m_leagues.at(index).toMap();
+    if (!leagueEnabled(entry.value("sport").toString(), entry.value("league").toString()))
         return;
 
     const bool leavingLive = m_liveMode;
@@ -338,47 +355,75 @@ void Backend::setLive(bool live)
     refresh();
 }
 
-void Backend::setSportEnabled(const QString &slug, bool enabled)
+void Backend::setLeagueEnabled(const QString &sport, const QString &league, bool enabled)
 {
-    if (!isKnownSport(slug))
-        return;
-    if (m_enabledSports.contains(slug) == enabled)
-        return;
-
-    if (enabled) {
-        // Rebuild in catalog order, so the sidebar sections keep their order.
-        QStringList ordered;
-        for (const auto &entry : catalog) {
-            const QString candidate = sportSlug(entry);
-            if ((candidate == slug || m_enabledSports.contains(candidate))
-                && !ordered.contains(candidate))
-                ordered.append(candidate);
+    bool known = false;
+    for (const auto &entry : catalog) {
+        if (sportSlug(entry) == sport && league == QLatin1String(entry.league)) {
+            known = true;
+            break;
         }
-        m_enabledSports = ordered;
-    } else {
-        m_enabledSports.removeAll(slug);
     }
-
-    saveSports();
-    emit sportsChanged();
-    applySportsChange();
-}
-
-void Backend::setAllSportsEnabled(bool enabled)
-{
-    const QStringList desired = enabled ? allSportSlugs() : QStringList();
-    if (desired == m_enabledSports)
+    if (!known)
         return;
 
-    m_enabledSports = desired;
-    saveSports();
-    emit sportsChanged();
-    applySportsChange();
+    const QString key = leagueKey(sport, league);
+    if (m_enabledLeagues.contains(key) == enabled)
+        return;
+
+    if (enabled)
+        m_enabledLeagues.insert(key);
+    else
+        m_enabledLeagues.remove(key);
+
+    saveLeagues();
+    emit leaguesChanged();
+    applyLeaguesChange();
 }
 
-void Backend::applySportsChange()
+void Backend::setSportLeaguesEnabled(const QString &sport, bool enabled)
 {
-    const bool hidden = !m_enabledSports.contains(league().value("sport").toString());
+    bool changed = false;
+    for (const auto &entry : catalog) {
+        if (sportSlug(entry) != sport)
+            continue;
+        const QString key = leagueKey(sport, QString::fromLatin1(entry.league));
+        if (enabled && !m_enabledLeagues.contains(key)) {
+            m_enabledLeagues.insert(key);
+            changed = true;
+        } else if (!enabled && m_enabledLeagues.contains(key)) {
+            m_enabledLeagues.remove(key);
+            changed = true;
+        }
+    }
+    if (!changed)
+        return;
+
+    saveLeagues();
+    emit leaguesChanged();
+    applyLeaguesChange();
+}
+
+void Backend::setAllLeaguesEnabled(bool enabled)
+{
+    QSet<QString> desired;
+    if (enabled) {
+        for (const auto &entry : catalog)
+            desired.insert(leagueKey(sportSlug(entry), QString::fromLatin1(entry.league)));
+    }
+    if (desired == m_enabledLeagues)
+        return;
+
+    m_enabledLeagues = desired;
+    saveLeagues();
+    emit leaguesChanged();
+    applyLeaguesChange();
+}
+
+void Backend::applyLeaguesChange()
+{
+    const bool hidden = !leagueEnabled(league().value("sport").toString(),
+                                       league().value("league").toString());
     int first = -1;
     if (hidden) {
         first = firstEnabledLeague();
@@ -389,7 +434,7 @@ void Backend::applySportsChange()
         }
     }
 
-    // Live mode scans again so hidden sports disappear from the list at once.
+    // Live mode scans again so hidden leagues disappear from the list at once.
     if (m_liveMode) {
         refresh();
         return;
@@ -474,66 +519,160 @@ void Backend::refresh()
 
 void Backend::fetchLive()
 {
+    m_events.clear();
+    m_liveCount = 0;
+    m_liveEvents.clear();
+    m_liveSeen.clear();
+    m_liveQueue.clear();
+    m_liveRequests = 0;
+    m_liveFailures = 0;
+    m_liveError.clear();
+
+    // ESPN groups a game under its US day, which can still be yesterday when
+    // the local clock has just crossed midnight, so scan both days early in
+    // the morning.
+    const QDate today = QDate::currentDate();
+    const QList<QDate> days = QTime::currentTime().hour() < 9
+                                  ? QList<QDate>{today, today.addDays(-1)}
+                                  : QList<QDate>{today};
+
+    for (const auto &value : m_leagues) {
+        const QVariantMap entry = value.toMap();
+        const QString sport = entry.value("sport").toString();
+        const QString league = entry.value("league").toString();
+        if (!leagueEnabled(sport, league))
+            continue;
+        for (const QDate &day : days) {
+            LiveTask task;
+            task.url = scoreboardUrl(sport, league, day);
+            task.sport = sport;
+            task.sportName = entry.value("sportName").toString();
+            task.leagueName = entry.value("name").toString();
+            m_liveQueue.append(task);
+        }
+    }
+
     m_status = "loading";
     m_error.clear();
     emit statusChanged();
 
-    QNetworkRequest request(liveHeaderUrl());
-    request.setTransferTimeout(20000);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
-
-    QNetworkReply *reply = m_network.get(request);
-    m_pending = reply;
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
-        if (reply != m_pending)
-            return;
-        m_pending.clear();
-        const QByteArray payload = reply->readAll();
-        const QString networkError = reply->error() == QNetworkReply::NoError
-                                       ? QString() : reply->errorString();
-        reply->deleteLater();
-
-        if (!networkError.isEmpty()) {
-            m_status = "error";
-            m_error = networkError;
-            emit statusChanged();
-            return;
-        }
-
-        QString parseError;
-        const QVariantList all = parseLiveHeader(payload, &parseError);
-        if (!parseError.isEmpty()) {
-            m_status = "error";
-            m_error = parseError;
-            emit statusChanged();
-            return;
-        }
-
-        QVariantList visible;
-        for (const auto &event : all) {
-            if (m_enabledSports.contains(event.toMap().value("sport").toString()))
-                visible.append(event);
-        }
-
-        m_events = visible;
-        m_liveCount = visible.size();
-        m_updatedAt = QDateTime::currentDateTime();
+    if (m_liveQueue.isEmpty()) {
         m_status = "ready";
-        m_error.clear();
         notifyAll();
-    });
+        return;
+    }
+
+    m_liveRequests = m_liveQueue.size();
+    startLiveRequests();
+}
+
+void Backend::startLiveRequests()
+{
+    static constexpr int concurrency = 6;
+
+    while (m_liveReplies.size() < concurrency && !m_liveQueue.isEmpty()) {
+        const LiveTask task = m_liveQueue.takeFirst();
+        QNetworkRequest request(task.url);
+        request.setTransferTimeout(15000);
+        request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+
+        QNetworkReply *reply = m_network.get(request);
+        m_liveReplies.insert(reply);
+        connect(reply, &QNetworkReply::finished, this, [this, reply, task] {
+            if (!m_liveReplies.contains(reply))
+                return;
+            m_liveReplies.remove(reply);
+
+            const QByteArray payload = reply->readAll();
+            const QString networkError = reply->error() == QNetworkReply::NoError
+                                           ? QString() : reply->errorString();
+            reply->deleteLater();
+
+            if (!networkError.isEmpty()) {
+                ++m_liveFailures;
+                if (m_liveError.isEmpty())
+                    m_liveError = networkError;
+            } else {
+                QString parseError;
+                const QVariantList events = parseScoreboard(payload, &parseError);
+                if (!parseError.isEmpty()) {
+                    ++m_liveFailures;
+                    if (m_liveError.isEmpty())
+                        m_liveError = parseError;
+                } else {
+                    const QVariantList live = liveEventsFrom(events, task.sport,
+                                                             task.sportName, task.leagueName);
+                    for (const auto &event : live) {
+                        const QString id = event.toMap().value("id").toString();
+                        if (m_liveSeen.contains(id))
+                            continue;
+                        m_liveSeen.insert(id);
+                        m_liveEvents.append(event);
+                    }
+                }
+            }
+
+            if (!m_liveQueue.isEmpty()) {
+                startLiveRequests();
+                return;
+            }
+            if (m_liveReplies.isEmpty())
+                finishLive();
+        });
+    }
+}
+
+void Backend::finishLive()
+{
+    std::sort(m_liveEvents.begin(), m_liveEvents.end(),
+              [](const QVariant &left, const QVariant &right) {
+                  const QVariantMap a = left.toMap();
+                  const QVariantMap b = right.toMap();
+                  const QString sectionA = a.value("sectionLabel").toString();
+                  const QString sectionB = b.value("sectionLabel").toString();
+                  if (sectionA != sectionB)
+                      return sectionA < sectionB;
+                  return a.value("start").toString() < b.value("start").toString();
+              });
+
+    m_events = m_liveEvents;
+    m_liveCount = m_events.size();
+    m_updatedAt = QDateTime::currentDateTime();
+
+    if (m_events.isEmpty() && m_liveRequests > 0 && m_liveFailures == m_liveRequests) {
+        m_status = "error";
+        m_error = m_liveError;
+        emit statusChanged();
+        return;
+    }
+
+    m_status = "ready";
+    m_error.clear();
+    notifyAll();
+}
+
+void Backend::cancelLiveRequests()
+{
+    m_liveQueue.clear();
+    const QSet<QNetworkReply *> replies = m_liveReplies;
+    m_liveReplies.clear();
+    for (QNetworkReply *reply : replies) {
+        reply->abort();
+        reply->deleteLater();
+    }
 }
 
 void Backend::cancelPending()
 {
-    if (!m_pending)
-        return;
-    // Clearing the pointer first makes the abort's finished signal a no-op,
-    // and keeps the old reply alive until deleteLater runs.
-    QNetworkReply *obsolete = m_pending.data();
-    m_pending.clear();
-    obsolete->abort();
-    obsolete->deleteLater();
+    if (m_pending) {
+        // Clearing the pointer first makes the abort's finished signal a
+        // no-op, and keeps the old reply alive until deleteLater runs.
+        QNetworkReply *obsolete = m_pending.data();
+        m_pending.clear();
+        obsolete->abort();
+        obsolete->deleteLater();
+    }
+    cancelLiveRequests();
 }
 
 void Backend::retranslate()
@@ -543,7 +682,6 @@ void Backend::retranslate()
     emit leagueChanged();
     emit dateChanged();
     emit eventsChanged();
-    emit sportsChanged();
 }
 
 void Backend::notifyAll()
@@ -563,11 +701,11 @@ void Backend::saveSelection() const
     settings.setValue("league/id", selected.value("league"));
 }
 
-void Backend::saveSports() const
+void Backend::saveLeagues() const
 {
     QDir().mkpath(QFileInfo(m_settingsPath).absolutePath());
     QSettings settings(m_settingsPath, QSettings::IniFormat);
-    settings.setValue("sports/enabled", m_enabledSports);
+    settings.setValue("leagues/enabled", enabledLeagues());
 }
 
 bool Backend::selectBySlug(const QString &sport, const QString &league)
@@ -582,11 +720,16 @@ bool Backend::selectBySlug(const QString &sport, const QString &league)
     return false;
 }
 
+bool Backend::leagueEnabled(const QString &sport, const QString &league) const
+{
+    return m_enabledLeagues.contains(leagueKey(sport, league));
+}
+
 int Backend::firstEnabledLeague() const
 {
     for (int i = 0; i < m_leagues.size(); ++i) {
         const QVariantMap entry = m_leagues.at(i).toMap();
-        if (m_enabledSports.contains(entry.value("sport").toString()))
+        if (leagueEnabled(entry.value("sport").toString(), entry.value("league").toString()))
             return i;
     }
     return -1;
@@ -655,9 +798,22 @@ QUrl Backend::scoreboardUrl(const QString &sport, const QString &league, const Q
     return url;
 }
 
-QUrl Backend::liveHeaderUrl()
+QVariantList Backend::liveEventsFrom(const QVariantList &scoreboardEvents, const QString &sport,
+                                     const QString &sportName, const QString &leagueName)
 {
-    return QUrl(QStringLiteral("https://site.web.api.espn.com/apis/v2/scoreboard/header"));
+    QVariantList live;
+    for (const auto &event : scoreboardEvents) {
+        QVariantMap item = event.toMap();
+        if (item.value("state").toString() != "in")
+            continue;
+        item.insert("sport", sport);
+        item.insert("leagueName", leagueName);
+        item.insert("sectionLabel", sportName.isEmpty()
+                                       ? leagueName
+                                       : sportName + " · " + leagueName);
+        live.append(item);
+    }
+    return live;
 }
 
 QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
@@ -730,83 +886,6 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
     std::sort(events.begin(), events.end(), [](const QVariant &left, const QVariant &right) {
         return left.toMap().value("start").toString() < right.toMap().value("start").toString();
     });
-    return events;
-}
-
-QVariantList Backend::parseLiveHeader(const QByteArray &payload, QString *error)
-{
-    if (error)
-        error->clear();
-
-    QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(payload, &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-        if (error)
-            *error = parseError.errorString().isEmpty()
-                       ? QStringLiteral("Unexpected response from the live scoreboard")
-                       : parseError.errorString();
-        return {};
-    }
-
-    // The catalog already knows the translated sport names.
-    QHash<QString, QString> sportNames;
-    for (const auto &league : leagueCatalog()) {
-        const QVariantMap entry = league.toMap();
-        sportNames.insert(entry.value("sport").toString(), entry.value("sportName").toString());
-    }
-
-    QVariantList events;
-    for (const auto &sportValue : document.object().value("sports").toArray()) {
-        const QJsonObject sport = sportValue.toObject();
-        const QString sportName = sportNames.value(sport.value("slug").toString(),
-                                                   sport.value("name").toString());
-        for (const auto &leagueValue : sport.value("leagues").toArray()) {
-            const QJsonObject league = leagueValue.toObject();
-            const QString leagueName = league.value("shortName").toString(
-                                           league.value("name").toString());
-
-            QVariantList leagueEvents;
-            for (const auto &eventValue : league.value("events").toArray()) {
-                const QJsonObject event = eventValue.toObject();
-                const QJsonObject fullStatus = event.value("fullStatus").toObject();
-                const QJsonObject type = fullStatus.value("type").toObject();
-                const QString state = type.value("state").toString(
-                    event.value("status").toString());
-                if (state != "in")
-                    continue;
-
-                QVariantList teams;
-                for (const auto &competitor : event.value("competitors").toArray())
-                    teams.append(headerCompetitor(competitor.toObject()));
-                orderAwayFirst(&teams);
-
-                QVariantMap item;
-                item.insert("id", event.value("id").toString());
-                item.insert("name", event.value("name").toString());
-                item.insert("shortName", event.value("shortName").toString());
-                item.insert("start", event.value("date").toString());
-                item.insert("state", "in");
-                item.insert("detail", type.value("detail").toString());
-                item.insert("shortDetail", type.value("shortDetail").toString());
-                item.insert("completed", false);
-                item.insert("teams", teams);
-                item.insert("venue", event.value("location").toString());
-                item.insert("sport", sport.value("slug").toString());
-                item.insert("leagueName", leagueName);
-                item.insert("sectionLabel", sportName.isEmpty()
-                                               ? leagueName
-                                               : sportName + " · " + leagueName);
-                leagueEvents.append(item);
-            }
-
-            std::sort(leagueEvents.begin(), leagueEvents.end(),
-                      [](const QVariant &left, const QVariant &right) {
-                          return left.toMap().value("start").toString()
-                               < right.toMap().value("start").toString();
-                      });
-            events += leagueEvents;
-        }
-    }
     return events;
 }
 

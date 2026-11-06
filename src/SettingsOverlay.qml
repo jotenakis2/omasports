@@ -3,7 +3,8 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 
-// Pick which sports appear in the sidebar and in the live view. Changes land
+// Pick which leagues appear in the sidebar and in the live view. A sport row
+// toggles every league under it; a league row toggles one. Changes land
 // immediately and are saved by the backend.
 Item {
     id: overlay
@@ -27,8 +28,8 @@ Item {
 
     Rectangle {
         anchors.centerIn: parent
-        width: Math.min(460, parent.width - 48)
-        height: Math.min(600, parent.height - 64)
+        width: Math.min(480, parent.width - 48)
+        height: Math.min(620, parent.height - 64)
         radius: theme.radius
         color: theme.card
         border.width: 1
@@ -47,7 +48,7 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Sports")
+                    text: qsTr("Sports and leagues")
                     color: theme.foreground
                     font.pixelSize: 17
                     font.bold: true
@@ -56,7 +57,7 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: qsTr("Choose the sports you want to follow.")
+                text: qsTr("Choose the leagues you want to follow.")
                 color: theme.mutedForeground
                 font.pixelSize: 11
                 wrapMode: Text.WordWrap
@@ -69,13 +70,13 @@ Item {
             }
 
             ListView {
-                id: sports
+                id: choices
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
-                spacing: 2
+                spacing: 1
                 boundsBehavior: Flickable.StopAtBounds
-                model: backend.sports
+                model: backend.settingsRows
 
                 ScrollBar.vertical: ScrollBar {
                     policy: ScrollBar.AsNeeded
@@ -89,65 +90,94 @@ Item {
                     }
                 }
 
-                delegate: Rectangle {
-                    id: sportRow
+                delegate: Item {
+                    id: choiceRow
                     required property var modelData
+                    readonly property bool sport: modelData.type === "sport"
+                    readonly property bool checked: sport ? modelData.allEnabled : modelData.enabled
+                    readonly property bool partial: sport && modelData.enabledCount > 0
+                                                     && !modelData.allEnabled
 
-                    width: sports.width - 10
-                    height: 42
-                    radius: Math.min(6, theme.radius)
-                    color: hover.hovered ? theme.selection : "transparent"
+                    width: choices.width - 10
+                    height: sport ? 38 : 34
+
+                    Rectangle {
+                        visible: choiceRow.sport
+                        anchors.top: parent.top
+                        width: parent.width - 6
+                        height: 1
+                        color: theme.line
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: Math.min(6, theme.radius)
+                        color: theme.selection
+                        opacity: hover.hovered ? 0.55 : 0
+                        Behavior on opacity {
+                            NumberAnimation { duration: 90 }
+                        }
+                    }
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 10
+                        anchors.leftMargin: choiceRow.sport ? 8 : 28
                         anchors.rightMargin: 10
-                        spacing: 11
+                        spacing: 10
 
                         Rectangle {
-                            Layout.preferredWidth: 18
-                            Layout.preferredHeight: 18
+                            Layout.preferredWidth: 16
+                            Layout.preferredHeight: 16
                             Layout.alignment: Qt.AlignVCenter
                             radius: Math.min(4, theme.radius)
-                            color: sportRow.modelData.enabled ? theme.accent : "transparent"
+                            color: choiceRow.checked ? theme.accent : "transparent"
                             border.width: 1
-                            border.color: sportRow.modelData.enabled ? theme.accent : theme.line
+                            border.color: (choiceRow.checked || choiceRow.partial)
+                                          ? theme.accent
+                                          : theme.line
 
                             Text {
                                 anchors.centerIn: parent
-                                visible: sportRow.modelData.enabled
-                                text: "✓"
-                                color: theme.accentForeground
-                                font.pixelSize: 12
+                                visible: choiceRow.checked || choiceRow.partial
+                                text: choiceRow.partial ? "–" : "✓"
+                                color: choiceRow.checked ? theme.accentForeground : theme.accent
+                                font.pixelSize: 11
                                 font.bold: true
                             }
                         }
 
-                        ColumnLayout {
+                        Text {
                             Layout.fillWidth: true
-                            spacing: 0
+                            text: choiceRow.modelData.name
+                            color: theme.foreground
+                            font.pixelSize: choiceRow.sport ? 11 : 13
+                            font.bold: choiceRow.sport
+                            font.capitalization: choiceRow.sport
+                                                 ? Font.AllUppercase : Font.MixedCase
+                            font.letterSpacing: choiceRow.sport ? 0.8 : 0
+                            elide: Text.ElideRight
+                        }
 
-                            Text {
-                                Layout.fillWidth: true
-                                text: sportRow.modelData.name
-                                color: theme.foreground
-                                font.pixelSize: 13
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                Layout.fillWidth: true
-                                text: qsTr("%n leagues", "", sportRow.modelData.leagues)
-                                color: theme.mutedForeground
-                                font.pixelSize: 10
-                            }
+                        Text {
+                            visible: choiceRow.sport
+                            text: qsTr("%n leagues", "", Number(choiceRow.modelData.leagues))
+                            color: theme.mutedForeground
+                            font.pixelSize: 10
                         }
                     }
 
                     HoverHandler { id: hover }
                     TapHandler {
-                        onTapped: backend.setSportEnabled(sportRow.modelData.slug,
-                                                          !sportRow.modelData.enabled)
+                        onTapped: {
+                            if (choiceRow.sport) {
+                                backend.setSportLeaguesEnabled(choiceRow.modelData.sport,
+                                                               !choiceRow.modelData.allEnabled)
+                            } else {
+                                backend.setLeagueEnabled(choiceRow.modelData.sport,
+                                                         choiceRow.modelData.league,
+                                                         !choiceRow.modelData.enabled)
+                            }
+                        }
                     }
                 }
             }
@@ -164,12 +194,12 @@ Item {
 
                 ActionButton {
                     text: qsTr("Show all")
-                    onClicked: backend.setAllSportsEnabled(true)
+                    onClicked: backend.setAllLeaguesEnabled(true)
                 }
 
                 ActionButton {
                     text: qsTr("Hide all")
-                    onClicked: backend.setAllSportsEnabled(false)
+                    onClicked: backend.setAllLeaguesEnabled(false)
                 }
 
                 Item { Layout.fillWidth: true }

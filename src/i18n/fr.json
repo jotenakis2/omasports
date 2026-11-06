@@ -1,10 +1,23 @@
 {
   "Today": "Aujourd'hui",
   "Refresh": "Actualiser",
-  "%n live": { "one": "%n en direct", "other": "%n en direct" },
-  "%n games": { "one": "%n match", "other": "%n matchs", "many": "%n de matchs" },
-  "%n games in progress": { "one": "%n match en cours", "other": "%n matchs en cours" },
-  "%n leagues": { "one": "%n ligue", "other": "%n ligues" },
+  "%n live": {
+    "one": "%n en direct",
+    "other": "%n en direct"
+  },
+  "%n games": {
+    "one": "%n match",
+    "other": "%n matchs",
+    "many": "%n de matchs"
+  },
+  "%n games in progress": {
+    "one": "%n match en cours",
+    "other": "%n matchs en cours"
+  },
+  "%n leagues": {
+    "one": "%n ligue",
+    "other": "%n ligues"
+  },
   "Refresh failed: %1": "Actualisation impossible : %1",
   "Loading scores…": "Chargement des scores…",
   "Scanning every league…": "Recherche des matchs en cours…",
@@ -17,16 +30,11 @@
   "J / K league": "J / K ligue",
   "H / L day": "H / L jour",
   "D live": "D direct",
-  "S sports": "S sports",
   "R refresh": "R actualiser",
   "Updated at %1": "Mis à jour à %1",
   "Leagues": "Ligues",
   "Search leagues": "Rechercher une ligue",
   "No leagues match “%1”": "Aucune ligue ne correspond à « %1 »",
-  "No sports selected": "Aucun sport sélectionné",
-  "Sports": "Sports",
-  "Choose the sports you want to follow.": "Choisissez les sports que vous voulez suivre.",
-  "Choose sports": "Choisir les sports",
   "Show all": "Tout afficher",
   "Hide all": "Tout masquer",
   "Live": "En direct",
@@ -50,5 +58,10 @@
   "D": "N",
   "L": "D",
   "T": "N",
-  "OT": "OT"
+  "OT": "OT",
+  "Sports and leagues": "Sports et ligues",
+  "Choose the leagues you want to follow.": "Choisissez les ligues que vous voulez suivre.",
+  "No leagues selected": "Aucune ligue sélectionnée",
+  "Choose leagues": "Choisir les ligues",
+  "S leagues": "S ligues"
 }

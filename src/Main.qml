@@ -20,7 +20,7 @@ ApplicationWindow {
 
     property bool helpVisible: false
     property bool settingsVisible: false
-    readonly property bool noSports: backend.enabledSports.length === 0
+    readonly property bool noLeagues: backend.enabledLeagues.length === 0
 
     function stepLeague(delta) {
         sidebar.step(delta)
@@ -271,7 +271,7 @@ ApplicationWindow {
                         Text {
                             Layout.fillWidth: true
                             text: backend.liveMode ? qsTr("Live")
-                                  : win.noSports ? qsTr("Sports")
+                                  : win.noLeagues ? qsTr("Leagues")
                                   : backend.league.name || ""
                             color: theme.foreground
                             font.pixelSize: 26
@@ -285,8 +285,8 @@ ApplicationWindow {
                                 translator.language
                                 if (backend.liveMode)
                                     return qsTr("%n games in progress", "", backend.liveCount)
-                                if (win.noSports)
-                                    return qsTr("Choose the sports you want to follow.")
+                                if (win.noLeagues)
+                                    return qsTr("Choose the leagues you want to follow.")
                                 var count = backend.events.length
                                 return backend.status === "ready" && count > 0
                                        ? backend.league.sportName + "  ·  " + qsTr("%n games", "", count)
@@ -387,7 +387,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noSports && backend.events.length === 0
+                            visible: !win.noLeagues && backend.events.length === 0
                                      && backend.status !== "ready" && backend.status !== "error"
                             spacing: 12
 
@@ -408,7 +408,7 @@ ApplicationWindow {
                         ColumnLayout {
                             anchors.centerIn: parent
                             width: Math.min(420, parent.width)
-                            visible: !win.noSports && backend.events.length === 0
+                            visible: !win.noLeagues && backend.events.length === 0
                                      && backend.status === "error"
                             spacing: 10
 
@@ -440,7 +440,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noSports && !backend.liveMode && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.liveMode && backend.events.length === 0
                                      && backend.status === "ready"
                             spacing: 12
 
@@ -469,7 +469,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noSports && backend.liveMode && backend.events.length === 0
+                            visible: !win.noLeagues && backend.liveMode && backend.events.length === 0
                                      && backend.status === "ready"
                             spacing: 12
 
@@ -498,12 +498,12 @@ ApplicationWindow {
                         ColumnLayout {
                             anchors.centerIn: parent
                             width: Math.min(380, parent.width)
-                            visible: win.noSports
+                            visible: win.noLeagues
                             spacing: 10
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: qsTr("No sports selected")
+                                text: qsTr("No leagues selected")
                                 color: theme.foreground
                                 font.pixelSize: 16
                                 font.bold: true
@@ -511,7 +511,7 @@ ApplicationWindow {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: qsTr("Choose the sports you want to follow.")
+                                text: qsTr("Choose the leagues you want to follow.")
                                 color: theme.mutedForeground
                                 font.pixelSize: 12
                                 wrapMode: Text.WordWrap
@@ -520,7 +520,7 @@ ApplicationWindow {
 
                             ActionButton {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: qsTr("Choose sports")
+                                text: qsTr("Choose leagues")
                                 primary: true
                                 onClicked: win.settingsVisible = true
                             }
@@ -573,7 +573,7 @@ ApplicationWindow {
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: 11 }
                 Text {
-                    text: qsTr("S sports")
+                    text: qsTr("S leagues")
                     color: theme.mutedForeground
                     font.pixelSize: 11
                 }

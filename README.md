@@ -9,13 +9,13 @@ Live scores and fixtures for every sport, in one window, from the keyboard.
 - Scores, schedules, and finals for 33 competitions across soccer, American
   football, basketball, baseball, hockey, tennis, golf, MMA, racing, rugby,
   cricket, volleyball, and Australian football.
-- A **Live** view (`D`) scans every league at once and keeps only the games in
-  progress, with each sport and league called out.
+- A **Live** view (`D`) scans every league you follow and keeps only the games
+  in progress, with each sport and league called out.
 
   ![omasports showing live scores](screenshot-live.png)
 
-- A **Sports** menu (`S`) chooses which sports appear in the sidebar and in the
-  live view; the choice is remembered across launches.
+- A **Sports and leagues** menu (`S`) chooses which leagues appear in the
+  sidebar and in the live view; the choice is remembered across launches.
 - A "Today" button and day-by-day navigation, so yesterday's results are one
   key away.
 - Season records read like `3V · 1N · 5D` in French and `3W · 1D · 5L` in
@@ -58,14 +58,14 @@ Adjust `Exec=` in the `.desktop` file if the binary lives somewhere other than
 | Key | Action |
 | --- | --- |
 | `D` | Live view: every game in progress |
-| `S` | Choose which sports to show |
+| `S` | Choose which leagues to show |
 | `J` / `K`, `↓` / `↑` | Next / previous league |
 | `H` / `L`, `←` / `→` | Previous / next day |
 | `T` | Back to today |
 | `Space`, `R` | Refresh scores |
 | `/` | Search leagues |
 | `?` | Show every shortcut |
-| `Esc` | Close the help or sports menu, or clear the search |
+| `Esc` | Close the help or settings, or clear the search |
 | `Q` | Quit |
 
 ## Languages
@@ -83,9 +83,9 @@ bin/build   # qmake6 + make into build/omasports
 bin/test    # Qt Test suite, offscreen
 ```
 
-The scoreboard and live parsers, the league catalog, sports filtering,
-persistence, and day navigation are covered by tests that never touch the
-network: `Backend` takes an offline flag for exactly that.
+The scoreboard parser, the league catalog, league filtering, persistence, and
+day navigation are covered by tests that never touch the network: `Backend`
+takes an offline flag for exactly that.
 
 Adding a league is one line in the `catalog` table in `src/backend.cpp`, using
 ESPN's sport and league slugs. Its scoreboard lives at
@@ -96,7 +96,7 @@ ESPN's sport and league slugs. Its scoreboard lives at
 ```text
 bin/build  bin/test  bin/install
 src/main.cpp            application setup
-src/backend.{h,cpp}     catalog, scores, live scan, sports filter, settings
+src/backend.{h,cpp}     catalog, scores, live scan, league filter, settings
 src/theme.{h,cpp}       Omarchy palette and Hyprland rounding
 src/translator.{h,cpp}  Omarchy language, live
 src/Main.qml            window, header, keyboard, states
@@ -105,7 +105,7 @@ src/EventCard.qml       one game or event
 src/TeamBadge.qml       crest with an abbreviation fallback
 src/ActionButton.qml    flat theme-following button
 src/LogoMark.qml        the score-bar mark, in the live accent
-src/SettingsOverlay.qml the sports checklist
+src/SettingsOverlay.qml the sports and leagues checklist
 src/HelpOverlay.qml     the shortcut sheet
 tests/                  tests for backend, theme, translator
 pkgbuild/               PKGBUILD, desktop entry, icon
