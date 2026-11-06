@@ -58,6 +58,13 @@ Item {
         return card.red ? qsTr("Red card") : qsTr("Yellow card")
     }
 
+    function recordLabel(team) {
+        if (!team)
+            return ""
+        translator.language
+        return backend.recordLabel(backend.match.sport || backend.league.sport, team.record)
+    }
+
     Rectangle {
         anchors.fill: parent
         color: theme.background
@@ -138,7 +145,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: overlay.homeTeam ? overlay.homeTeam.record : ""
+                        text: overlay.recordLabel(overlay.homeTeam)
                         color: theme.mutedForeground
                         font.pixelSize: 10
                         horizontalAlignment: Text.AlignHCenter
@@ -201,7 +208,7 @@ Item {
 
                     Text {
                         Layout.fillWidth: true
-                        text: overlay.awayTeam ? overlay.awayTeam.record : ""
+                        text: overlay.recordLabel(overlay.awayTeam)
                         color: theme.mutedForeground
                         font.pixelSize: 10
                         horizontalAlignment: Text.AlignHCenter
