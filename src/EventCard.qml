@@ -102,7 +102,7 @@ Rectangle {
                         Text {
                             Layout.fillWidth: true
                             visible: text.length > 0
-                            text: modelData.record
+                            text: card.recordLabel(modelData.record)
                             color: theme.mutedForeground
                             font.pixelSize: 10
                             elide: Text.ElideRight
@@ -192,5 +192,10 @@ Rectangle {
         var day = value.getDate()
         return value.getFullYear() + "-" + (month < 10 ? "0" : "") + month + "-"
                 + (day < 10 ? "0" : "") + day
+    }
+
+    function recordLabel(record) {
+        translator.language
+        return backend.recordLabel(modelData.sport || backend.league.sport, record)
     }
 }

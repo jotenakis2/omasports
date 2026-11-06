@@ -9,4 +9,7 @@ Exec=omasports
 Icon=omasports
 Terminal=false
 Categories=Utility;
+Keywords=sports;scores;live;matches;
+Keywords[fr]=sports;scores;direct;matchs;
 StartupWMClass=omasports
+StartupNotify=true

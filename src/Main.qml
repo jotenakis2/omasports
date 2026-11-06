@@ -8,7 +8,7 @@ ApplicationWindow {
 
     width: 1080
     height: 740
-    minimumWidth: 720
+    minimumWidth: 860
     minimumHeight: 480
     visible: true
     title: "omasports"
@@ -19,94 +19,115 @@ ApplicationWindow {
     Material.roundedScale: theme.radius
 
     property bool helpVisible: false
+    property bool settingsVisible: false
+    readonly property bool noSports: backend.enabledSports.length === 0
 
     function stepLeague(delta) {
         sidebar.step(delta)
     }
 
+    function closeOverlays() {
+        win.helpVisible = false
+        win.settingsVisible = false
+    }
+
     Shortcut {
         sequences: ["j", "J"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: win.stepLeague(1)
     }
     Shortcut {
         sequences: ["k", "K"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: win.stepLeague(-1)
     }
     Shortcut {
         sequences: ["Up"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: win.stepLeague(-1)
     }
     Shortcut {
         sequences: ["Down"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: win.stepLeague(1)
     }
     Shortcut {
         sequences: ["h", "H", "Left"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
         onActivated: backend.previousDay()
     }
     Shortcut {
         sequences: ["l", "L", "Right"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
         onActivated: backend.nextDay()
     }
     Shortcut {
         sequences: ["t", "T"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.liveMode
         onActivated: backend.today()
+    }
+    Shortcut {
+        sequences: ["d", "D"]
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
+        onActivated: backend.toggleLive()
+    }
+    Shortcut {
+        sequences: ["s", "S"]
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible
+        onActivated: win.settingsVisible = !win.settingsVisible
     }
     Shortcut {
         sequences: ["r", "R", "Space"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: backend.refresh()
     }
     Shortcut {
         sequence: "/"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: sidebar.focusSearch()
     }
     Shortcut {
         sequences: ["q", "Q"]
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible
         onActivated: Qt.quit()
     }
     Shortcut {
         sequence: "?"
         context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching
+        enabled: !sidebar.searching && !win.settingsVisible
         onActivated: win.helpVisible = !win.helpVisible
     }
     Shortcut {
         sequence: "Escape"
         context: Qt.ApplicationShortcut
-        enabled: win.helpVisible
-        onActivated: win.helpVisible = false
+        enabled: win.helpVisible || win.settingsVisible
+        onActivated: win.closeOverlays()
     }
 
-    // Live games move on their own; a quiet day only refreshes when asked.
+    // Live games move on their own; the live view rescans every league, so it
+    // runs more slowly than a single league's scoreboard.
     Timer {
-        interval: 30000
+        interval: backend.liveMode ? 60000 : 30000
         repeat: true
-        running: backend.liveCount > 0 && win.visible && !win.helpVisible
+        running: (backend.liveMode || backend.liveCount > 0) && win.visible
+                 && !win.helpVisible && !win.settingsVisible
         onTriggered: backend.refresh()
     }
 
     onActiveChanged: {
-        if (active && backend.liveCount > 0)
+        if (active && (backend.liveMode || backend.liveCount > 0))
             backend.refresh()
     }
 
@@ -148,6 +169,7 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
 
                 RowLayout {
+                    visible: !backend.liveMode
                     spacing: 4
 
                     ActionButton {
@@ -168,19 +190,23 @@ ApplicationWindow {
                         text: "›"
                         onClicked: backend.nextDay()
                     }
+
+                    ActionButton {
+                        visible: !backend.isToday
+                        text: qsTr("Today")
+                        primary: true
+                        onClicked: backend.today()
+                    }
                 }
 
                 ActionButton {
-                    visible: !backend.isToday
-                    text: qsTr("Today")
-                    primary: true
-                    onClicked: backend.today()
+                    text: qsTr("Live")
+                    primary: backend.liveMode
+                    onClicked: backend.toggleLive()
                 }
 
-                Item { Layout.preferredWidth: 6 }
-
                 RowLayout {
-                    visible: backend.liveCount > 0
+                    visible: backend.liveCount > 0 && !backend.liveMode
                     spacing: 6
 
                     Rectangle {
@@ -191,7 +217,7 @@ ApplicationWindow {
                         color: theme.accent
 
                         SequentialAnimation on opacity {
-                            running: backend.liveCount > 0
+                            running: backend.liveCount > 0 && !backend.liveMode
                             loops: Animation.Infinite
                             NumberAnimation { to: 0.45; duration: 800; easing.type: Easing.InOutQuad }
                             NumberAnimation { to: 1; duration: 800; easing.type: Easing.InOutQuad }
@@ -222,6 +248,7 @@ ApplicationWindow {
                 id: sidebar
                 Layout.preferredWidth: 264
                 Layout.fillHeight: true
+                onSettingsRequested: win.settingsVisible = true
             }
 
             Item {
@@ -243,7 +270,9 @@ ApplicationWindow {
 
                         Text {
                             Layout.fillWidth: true
-                            text: backend.league.name || ""
+                            text: backend.liveMode ? qsTr("Live")
+                                  : win.noSports ? qsTr("Sports")
+                                  : backend.league.name || ""
                             color: theme.foreground
                             font.pixelSize: 26
                             font.bold: true
@@ -254,6 +283,10 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             text: {
                                 translator.language
+                                if (backend.liveMode)
+                                    return qsTr("%n games in progress", "", backend.liveCount)
+                                if (win.noSports)
+                                    return qsTr("Choose the sports you want to follow.")
                                 var count = backend.events.length
                                 return backend.status === "ready" && count > 0
                                        ? backend.league.sportName + "  ·  " + qsTr("%n games", "", count)
@@ -306,25 +339,55 @@ ApplicationWindow {
                             spacing: 8
                             model: backend.events
                             boundsBehavior: Flickable.StopAtBounds
+                            section.property: backend.liveMode ? "sectionLabel" : ""
+                            section.criteria: ViewSection.FullString
 
                             ScrollBar.vertical: ScrollBar {
                                 policy: ScrollBar.AsNeeded
+                                width: 6
+                                background: Rectangle { color: "transparent" }
                                 contentItem: Rectangle {
                                     implicitWidth: 4
                                     radius: 2
                                     color: theme.foreground
-                                    opacity: 0.22
+                                    opacity: 0.24
+                                }
+                            }
+
+                            section.delegate: Item {
+                                width: games.width - 12
+                                height: 34
+
+                                Rectangle {
+                                    anchors.top: parent.top
+                                    anchors.topMargin: 2
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: parent.width - 12
+                                    height: 1
+                                    color: theme.line
+                                }
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: 4
+                                    text: section
+                                    color: theme.mutedForeground
+                                    font.pixelSize: 10
+                                    font.bold: true
+                                    font.capitalization: Font.AllUppercase
+                                    font.letterSpacing: 1
                                 }
                             }
 
                             delegate: EventCard {
-                                width: games.width
+                                width: games.width - 12
                             }
                         }
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: backend.events.length === 0
+                            visible: !win.noSports && backend.events.length === 0
                                      && backend.status !== "ready" && backend.status !== "error"
                             spacing: 12
 
@@ -335,7 +398,8 @@ ApplicationWindow {
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
-                                text: qsTr("Loading scores…")
+                                text: backend.liveMode ? qsTr("Scanning every league…")
+                                                       : qsTr("Loading scores…")
                                 color: theme.mutedForeground
                                 font.pixelSize: 12
                             }
@@ -344,7 +408,8 @@ ApplicationWindow {
                         ColumnLayout {
                             anchors.centerIn: parent
                             width: Math.min(420, parent.width)
-                            visible: backend.events.length === 0 && backend.status === "error"
+                            visible: !win.noSports && backend.events.length === 0
+                                     && backend.status === "error"
                             spacing: 10
 
                             Text {
@@ -375,7 +440,8 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: backend.events.length === 0 && backend.status === "ready"
+                            visible: !win.noSports && !backend.liveMode && backend.events.length === 0
+                                     && backend.status === "ready"
                             spacing: 12
 
                             Text {
@@ -398,6 +464,65 @@ ApplicationWindow {
                                 text: qsTr("Back to today")
                                 primary: true
                                 onClicked: backend.today()
+                            }
+                        }
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            visible: !win.noSports && backend.liveMode && backend.events.length === 0
+                                     && backend.status === "ready"
+                            spacing: 12
+
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: "—"
+                                color: theme.mutedForeground
+                                font.pixelSize: 40
+                            }
+
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: qsTr("No games in progress right now.")
+                                color: theme.mutedForeground
+                                font.pixelSize: 14
+                            }
+
+                            ActionButton {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: qsTr("Refresh")
+                                primary: true
+                                onClicked: backend.refresh()
+                            }
+                        }
+
+                        ColumnLayout {
+                            anchors.centerIn: parent
+                            width: Math.min(380, parent.width)
+                            visible: win.noSports
+                            spacing: 10
+
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: qsTr("No sports selected")
+                                color: theme.foreground
+                                font.pixelSize: 16
+                                font.bold: true
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: qsTr("Choose the sports you want to follow.")
+                                color: theme.mutedForeground
+                                font.pixelSize: 12
+                                wrapMode: Text.WordWrap
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+
+                            ActionButton {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: qsTr("Choose sports")
+                                primary: true
+                                onClicked: win.settingsVisible = true
                             }
                         }
                     }
@@ -442,7 +567,13 @@ ApplicationWindow {
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: 11 }
                 Text {
-                    text: qsTr("R refresh")
+                    text: qsTr("D live")
+                    color: theme.mutedForeground
+                    font.pixelSize: 11
+                }
+                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
+                Text {
+                    text: qsTr("S sports")
                     color: theme.mutedForeground
                     font.pixelSize: 11
                 }
@@ -464,6 +595,12 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    SettingsOverlay {
+        anchors.fill: parent
+        visible: win.settingsVisible
+        onClosed: win.settingsVisible = false
     }
 
     HelpOverlay {

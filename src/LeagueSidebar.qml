@@ -9,24 +9,29 @@ Rectangle {
     color: theme.panel
     property string query: ""
     property bool searching: search.activeFocus
+    signal settingsRequested()
 
     Material.theme: theme.dark ? Material.Dark : Material.Light
     Material.accent: theme.accent
     Material.roundedScale: theme.radius
 
-    // Every league in the catalog, filtered by the search box. The catalog
+    // Every league the user follows, filtered by the search box. The catalog
     // order is the order they appear in, grouped by sport.
     property var model: {
         translator.language
+        var enabled = backend.enabledSports
         var all = backend.leagues
         var needle = query.trim().toLowerCase()
         var result = []
         for (var i = 0; i < all.length; ++i) {
             var league = all[i]
-            if (needle.length === 0
-                    || league.name.toLowerCase().indexOf(needle) >= 0
-                    || league.sportName.toLowerCase().indexOf(needle) >= 0)
-                result.push(league)
+            if (enabled.indexOf(league.sport) < 0)
+                continue
+            if (needle.length > 0
+                    && league.name.toLowerCase().indexOf(needle) < 0
+                    && league.sportName.toLowerCase().indexOf(needle) < 0)
+                continue
+            result.push(league)
         }
         return result
     }
@@ -81,17 +86,40 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        Text {
+        RowLayout {
             Layout.fillWidth: true
             Layout.leftMargin: 18
-            Layout.topMargin: 18
-            Layout.bottomMargin: 8
-            text: qsTr("Leagues")
-            color: theme.mutedForeground
-            font.pixelSize: 10
-            font.bold: true
-            font.capitalization: Font.AllUppercase
-            font.letterSpacing: 1
+            Layout.rightMargin: 12
+            Layout.topMargin: 14
+            Layout.bottomMargin: 6
+            spacing: 8
+
+            Text {
+                Layout.fillWidth: true
+                text: qsTr("Leagues")
+                color: theme.mutedForeground
+                font.pixelSize: 10
+                font.bold: true
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: 1
+            }
+
+            Rectangle {
+                Layout.preferredWidth: 22
+                Layout.preferredHeight: 22
+                radius: Math.min(4, theme.radius)
+                color: gearHover.hovered ? theme.card : "transparent"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "⚙"
+                    color: gearHover.hovered ? theme.foreground : theme.mutedForeground
+                    font.pixelSize: 13
+                }
+
+                HoverHandler { id: gearHover }
+                TapHandler { onTapped: sidebar.settingsRequested() }
+            }
         }
 
         Item {
@@ -165,96 +193,124 @@ Rectangle {
             }
         }
 
-        Item { Layout.preferredHeight: 10 }
+        Item { Layout.preferredHeight: 8 }
 
-        ListView {
-            id: list
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            clip: true
-            spacing: 1
-            boundsBehavior: Flickable.StopAtBounds
-            model: sidebar.model
-            section.property: "sportName"
-            section.criteria: ViewSection.FullString
 
-            ScrollBar.vertical: ScrollBar {
-                policy: ScrollBar.AsNeeded
-                contentItem: Rectangle {
-                    implicitWidth: 4
-                    radius: 2
-                    color: theme.foreground
-                    opacity: 0.22
-                }
-            }
+            ListView {
+                id: list
+                anchors.fill: parent
+                clip: true
+                spacing: 1
+                boundsBehavior: Flickable.StopAtBounds
+                model: sidebar.model
+                section.property: "sportName"
+                section.criteria: ViewSection.FullString
 
-            section.delegate: Item {
-                width: list.width
-                height: 30
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 18
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 2
-                    text: section
-                    color: theme.mutedForeground
-                    font.pixelSize: 10
-                    font.bold: true
-                    font.capitalization: Font.AllUppercase
-                    font.letterSpacing: 1
-                }
-            }
-
-            delegate: Rectangle {
-                id: row
-                required property var modelData
-
-                readonly property bool current: backend.leagueIndex === modelData.index
-
-                width: list.width
-                height: 34
-                color: "transparent"
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
-                    radius: Math.min(theme.radius, 6)
-                    color: row.current ? theme.selection : theme.card
-                    opacity: row.current ? 1 : (hover.hovered ? 0.7 : 0)
-                    Behavior on opacity {
-                        NumberAnimation { duration: 90 }
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                    width: 6
+                    background: Rectangle { color: "transparent" }
+                    contentItem: Rectangle {
+                        implicitWidth: 4
+                        radius: 2
+                        color: theme.foreground
+                        opacity: 0.22
                     }
                 }
 
-                Rectangle {
-                    visible: row.current
-                    anchors.left: parent.left
-                    anchors.leftMargin: 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 3
-                    height: 16
-                    radius: 1.5
-                    color: theme.accent
+                section.delegate: Item {
+                    width: list.width
+                    height: 40
+
+                    Rectangle {
+                        anchors.top: parent.top
+                        anchors.topMargin: 2
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width - 24
+                        height: 1
+                        color: theme.line
+                    }
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 18
+                        anchors.bottom: parent.bottom
+                        anchors.bottomMargin: 6
+                        text: section
+                        color: theme.mutedForeground
+                        font.pixelSize: 10
+                        font.bold: true
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 1
+                    }
                 }
 
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 20
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: row.modelData.name
-                    color: theme.foreground
-                    opacity: row.current ? 1 : 0.82
-                    font.pixelSize: 13
-                    font.bold: row.current
-                    elide: Text.ElideRight
-                }
+                delegate: Rectangle {
+                    id: row
+                    required property var modelData
 
-                HoverHandler { id: hover }
-                TapHandler { onTapped: backend.selectLeague(row.modelData.index) }
+                    readonly property bool current: backend.leagueIndex === modelData.index
+
+                    width: list.width
+                    height: 34
+                    color: "transparent"
+
+                    Rectangle {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 16
+                        radius: Math.min(theme.radius, 6)
+                        color: row.current ? theme.selection : theme.card
+                        opacity: row.current ? 1 : (hover.hovered ? 0.7 : 0)
+                        Behavior on opacity {
+                            NumberAnimation { duration: 90 }
+                        }
+                    }
+
+                    Rectangle {
+                        visible: row.current
+                        anchors.left: parent.left
+                        anchors.leftMargin: 4
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 3
+                        height: 16
+                        radius: 1.5
+                        color: theme.accent
+                    }
+
+                    Text {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 20
+                        anchors.right: parent.right
+                        anchors.rightMargin: 24
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: row.modelData.name
+                        color: theme.foreground
+                        opacity: row.current ? 1 : 0.82
+                        font.pixelSize: 13
+                        font.bold: row.current
+                        elide: Text.ElideRight
+                    }
+
+                    HoverHandler { id: hover }
+                    TapHandler { onTapped: backend.selectLeague(row.modelData.index) }
+                }
+            }
+
+            Text {
+                anchors.centerIn: parent
+                width: Math.max(120, list.width - 44)
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                visible: list.count === 0
+                text: sidebar.query.length > 0
+                      ? qsTr("No leagues match “%1”").arg(sidebar.query)
+                      : qsTr("No sports selected")
+                color: theme.mutedForeground
+                font.pixelSize: 12
             }
         }
     }
