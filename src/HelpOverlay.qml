@@ -17,6 +17,7 @@ Item {
             { keys: "/", action: qsTr("Search leagues") },
             { keys: "D", action: qsTr("All live scores") },
             { keys: "C", action: qsTr("Standings") },
+            { keys: "A", action: qsTr("Upcoming matches") },
             { keys: "S", action: qsTr("Choose leagues") },
             { keys: "Esc", action: qsTr("Close") },
             { keys: "Q", action: qsTr("Quit") }

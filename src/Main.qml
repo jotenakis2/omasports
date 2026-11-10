@@ -99,6 +99,12 @@ ApplicationWindow {
         onActivated: backend.toggleStandings()
     }
     Shortcut {
+        sequence: "a"
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
+        onActivated: backend.toggleUpcoming()
+    }
+    Shortcut {
         sequence: "s"
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !backend.matchOpen
@@ -195,7 +201,7 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
 
                 DayNavigation {
-                    visible: !backend.liveMode && !backend.standingsVisible
+                    visible: !backend.liveMode && !backend.standingsVisible && !backend.upcomingVisible
                     dateLabel: backend.dateLabel
                     isToday: backend.isToday
                     onPrevious: backend.previousDay()
@@ -213,6 +219,12 @@ ApplicationWindow {
                     text: qsTr("Standings")
                     primary: backend.standingsVisible
                     onClicked: backend.toggleStandings()
+                }
+
+                ActionButton {
+                    text: qsTr("Upcoming")
+                    primary: backend.upcomingVisible
+                    onClicked: backend.toggleUpcoming()
                 }
 
                 RowLayout {
@@ -299,6 +311,8 @@ ApplicationWindow {
                                     return qsTr("Choose the leagues you want to follow.")
                                 if (backend.standingsVisible)
                                     return backend.league.sportName + "  ·  " + qsTr("Standings")
+                                if (backend.upcomingVisible)
+                                    return backend.league.sportName + "  ·  " + qsTr("Upcoming")
                                 var count = backend.events.length
                                 return backend.status === "ready" && count > 0
                                        ? backend.league.sportName + "  ·  " + qsTr("%n games", "", count)
@@ -346,7 +360,7 @@ ApplicationWindow {
                         ListView {
                             id: games
                             anchors.fill: parent
-                            visible: backend.events.length > 0 && !backend.standingsVisible
+                            visible: backend.events.length > 0 && !backend.standingsVisible && !backend.upcomingVisible
                             clip: true
                             spacing: 8
                             model: backend.events
@@ -400,7 +414,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noLeagues && !backend.standingsVisible && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && !backend.upcomingVisible && backend.events.length === 0
                                      && backend.status !== "ready" && backend.status !== "error"
                             spacing: 12
 
@@ -421,7 +435,7 @@ ApplicationWindow {
                         ColumnLayout {
                             anchors.centerIn: parent
                             width: Math.min(420, parent.width)
-                            visible: !win.noLeagues && !backend.standingsVisible && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && !backend.upcomingVisible && backend.events.length === 0
                                      && backend.status === "error"
                             spacing: 10
 
@@ -453,7 +467,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noLeagues && !backend.standingsVisible && !backend.liveMode && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && !backend.upcomingVisible && !backend.liveMode && backend.events.length === 0
                                      && backend.status === "ready"
                             spacing: 12
 
@@ -482,7 +496,7 @@ ApplicationWindow {
 
                         ColumnLayout {
                             anchors.centerIn: parent
-                            visible: !win.noLeagues && !backend.standingsVisible && backend.liveMode && backend.events.length === 0
+                            visible: !win.noLeagues && !backend.standingsVisible && !backend.upcomingVisible && backend.liveMode && backend.events.length === 0
                                      && backend.status === "ready"
                             spacing: 12
 
@@ -511,6 +525,11 @@ ApplicationWindow {
                         StandingsView {
                             anchors.fill: parent
                             visible: backend.standingsVisible && !win.noLeagues
+                        }
+
+                        UpcomingView {
+                            anchors.fill: parent
+                            visible: backend.upcomingVisible && !win.noLeagues
                         }
 
                         ColumnLayout {
@@ -592,6 +611,12 @@ ApplicationWindow {
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
                     text: qsTr("C standings")
+                    color: theme.mutedForeground
+                    font.pixelSize: theme.fsSmall
+                }
+                Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
+                Text {
+                    text: qsTr("A upcoming")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }

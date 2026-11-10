@@ -10,6 +10,7 @@
         <file alias="MatchOverlay.qml">MatchOverlay.qml</file>
         <file alias="SettingsOverlay.qml">SettingsOverlay.qml</file>
         <file alias="StandingsView.qml">StandingsView.qml</file>
+        <file alias="UpcomingView.qml">UpcomingView.qml</file>
         <file alias="TeamBadge.qml">TeamBadge.qml</file>
         <file alias="i18n/en.json">i18n/en.json</file>
         <file alias="i18n/fr.json">i18n/fr.json</file>

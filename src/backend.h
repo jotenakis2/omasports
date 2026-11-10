@@ -36,6 +36,10 @@ class Backend : public QObject {
     Q_PROPERTY(QVariantList standings READ standings NOTIFY standingsChanged)
     Q_PROPERTY(QStringList standingsHeaders READ standingsHeaders NOTIFY standingsChanged)
     Q_PROPERTY(bool standingsSeasonUncertain READ standingsSeasonUncertain NOTIFY standingsChanged)
+    Q_PROPERTY(QVariantList upcoming READ upcoming NOTIFY upcomingChanged)
+    Q_PROPERTY(bool upcomingLoading READ upcomingLoading NOTIFY upcomingChanged)
+    Q_PROPERTY(QString upcomingError READ upcomingError NOTIFY upcomingChanged)
+    Q_PROPERTY(bool upcomingVisible READ upcomingVisible NOTIFY upcomingChanged)
     Q_PROPERTY(QVariantList settingsRows READ settingsRows NOTIFY leaguesChanged)
     Q_PROPERTY(QStringList enabledLeagues READ enabledLeagues NOTIFY leaguesChanged)
     Q_PROPERTY(bool matchOpen READ matchOpen NOTIFY matchChanged)
@@ -66,6 +70,10 @@ public:
     QVariantList standings() const { return m_standings; }
     QStringList standingsHeaders() const { return m_standingsHeaders; }
     bool standingsSeasonUncertain() const { return m_standingsSeasonUncertain; }
+    QVariantList upcoming() const { return m_upcoming; }
+    bool upcomingLoading() const { return m_upcomingLoading; }
+    QString upcomingError() const { return m_upcomingError; }
+    bool upcomingVisible() const { return m_upcomingVisible; }
     QVariantList settingsRows() const;
     QStringList enabledLeagues() const;
     bool matchOpen() const { return m_matchOpen; }
@@ -85,7 +93,15 @@ public:
     Q_INVOKABLE void setLive(bool live);
     Q_INVOKABLE void toggleStandings();
     Q_INVOKABLE void setStandings(bool visible);
+    Q_INVOKABLE void toggleUpcoming();
+    Q_INVOKABLE void setUpcoming(bool visible);
+    Q_INVOKABLE void refreshUpcoming();
+    Q_INVOKABLE void invalidateUpcomingCache();
     Q_INVOKABLE void openMatch(const QString &id);
+
+    int upcomingRequestCount() const { return m_upcomingNetworkRequests; }
+    void injectUpcomingMonthPayload(const QString &sport, const QString &league,
+                                    const QString &month, const QByteArray &payload);
     Q_INVOKABLE void closeMatch();
     Q_INVOKABLE void refreshMatch();
     Q_INVOKABLE void setLeagueEnabled(const QString &sport, const QString &league, bool enabled);
@@ -103,6 +119,14 @@ public:
     static QVariantList leagueCatalog();
     static QVariantList parseScoreboard(const QByteArray &payload, QString *error = nullptr,
                                          const QString &sport = {}, const QString &league = {});
+    static QVariantList parseUpcomingSchedule(const QByteArray &currentMonthPayload,
+                                              const QByteArray &nextMonthPayload,
+                                              const QDate &today, QString *error = nullptr,
+                                              const QString &sport = {},
+                                              const QString &league = {},
+                                              int limit = 200);
+    static QUrl scoreboardMonthUrl(const QString &sport, const QString &league,
+                                   const QDate &monthDate);
     static QVariantList parseStandings(const QByteArray &payload, const QString &sport,
                                        QString *error = nullptr, const QString &league = {});
     static QVariantMap parseMatchSummary(const QByteArray &payload, const QVariantMap &event,
@@ -136,6 +160,7 @@ signals:
     void dateChanged();
     void liveModeChanged();
     void standingsChanged();
+    void upcomingChanged();
     void matchChanged();
     void fontScaleChanged();
 
@@ -152,6 +177,7 @@ private:
     void cancelPending();
     void fetchLive();
     void fetchStandings();
+    void fetchUpcoming(bool force = false);
     void fetchMatch();
     void cancelMatchPending();
     void startLiveRequests();
@@ -180,6 +206,7 @@ private:
     QVariantList m_leagues;
     QVariantList m_events;
     QVariantList m_standings;
+    QVariantList m_upcoming;
     QStringList m_standingsHeaders;
     QVariantMap m_match;
     QString m_matchId;
@@ -195,7 +222,23 @@ private:
     bool m_liveMode = false;
     bool m_standingsVisible = false;
     bool m_standingsSeasonUncertain = false;
+    bool m_upcomingVisible = false;
+    bool m_upcomingLoading = false;
     QString m_status = "idle";
     QString m_error;
+    QString m_upcomingError;
     QDateTime m_updatedAt;
+
+    struct UpcomingCacheEntry {
+        QByteArray payload;
+        QDateTime fetchedAt;
+    };
+    QMap<QString, UpcomingCacheEntry> m_upcomingCache;
+    QSet<QNetworkReply *> m_upcomingReplies;
+    int m_upcomingPending = 0;
+    int m_upcomingNetworkRequests = 0;
+    QByteArray m_upcomingCurrentPayload;
+    QByteArray m_upcomingNextPayload;
+    bool m_upcomingHadNetworkError = false;
+    QString m_upcomingNetworkError;
 };

@@ -388,6 +388,7 @@ void Backend::selectLeague(int index)
         return;
 
     const bool leavingLive = m_liveMode;
+    const bool keepUpcoming = m_upcomingVisible;
     if (index == m_leagueIndex && !leavingLive)
         return;
 
@@ -404,6 +405,12 @@ void Backend::selectLeague(int index)
     if (leavingLive)
         emit liveModeChanged();
     emit standingsChanged();
+    if (keepUpcoming) {
+        m_standingsHeaders = standingsHeadersFor(this->league().value("sport").toString());
+        emit leagueChanged();
+        fetchUpcoming(false);
+        return;
+    }
     notifyAll();
     refresh();
 }
@@ -417,6 +424,10 @@ void Backend::nextDay()
     if (m_standingsVisible) {
         m_standingsVisible = false;
         emit standingsChanged();
+    }
+    if (m_upcomingVisible) {
+        m_upcomingVisible = false;
+        emit upcomingChanged();
     }
     m_dayOffset = qMin(m_dayOffset + 1, 366);
     m_events.clear();
@@ -437,6 +448,10 @@ void Backend::previousDay()
         m_standingsVisible = false;
         emit standingsChanged();
     }
+    if (m_upcomingVisible) {
+        m_upcomingVisible = false;
+        emit upcomingChanged();
+    }
     m_dayOffset = qMax(m_dayOffset - 1, -366);
     m_events.clear();
     m_liveCount = 0;
@@ -450,6 +465,7 @@ void Backend::today()
 {
     const bool wasLive = m_liveMode;
     const bool wasStandings = m_standingsVisible;
+    const bool wasUpcoming = m_upcomingVisible;
     if (wasLive) {
         m_liveMode = false;
         emit liveModeChanged();
@@ -458,7 +474,11 @@ void Backend::today()
         m_standingsVisible = false;
         emit standingsChanged();
     }
-    if (m_dayOffset == 0 && !wasLive && !wasStandings) {
+    if (wasUpcoming) {
+        m_upcomingVisible = false;
+        emit upcomingChanged();
+    }
+    if (m_dayOffset == 0 && !wasLive && !wasStandings && !wasUpcoming) {
         refresh();
         return;
     }
@@ -487,6 +507,10 @@ void Backend::setLive(bool live)
     if (live && m_standingsVisible) {
         m_standingsVisible = false;
         emit standingsChanged();
+    }
+    if (live && m_upcomingVisible) {
+        m_upcomingVisible = false;
+        emit upcomingChanged();
     }
 
     m_liveMode = live;
@@ -518,6 +542,10 @@ void Backend::setStandings(bool visible)
         m_liveMode = false;
         emit liveModeChanged();
     }
+    if (visible && m_upcomingVisible) {
+        m_upcomingVisible = false;
+        emit upcomingChanged();
+    }
 
     m_standingsVisible = visible;
     m_standings.clear();
@@ -531,6 +559,61 @@ void Backend::setStandings(bool visible)
     emit standingsChanged();
     notifyAll();
     refresh();
+}
+
+void Backend::toggleUpcoming()
+{
+    setUpcoming(!m_upcomingVisible);
+}
+
+void Backend::setUpcoming(bool visible)
+{
+    if (visible == m_upcomingVisible) {
+        if (visible)
+            refreshUpcoming();
+        return;
+    }
+
+    if (visible && m_liveMode) {
+        m_liveMode = false;
+        emit liveModeChanged();
+    }
+    if (visible && m_standingsVisible) {
+        m_standingsVisible = false;
+        emit standingsChanged();
+    }
+
+    m_upcomingVisible = visible;
+    m_upcomingError.clear();
+    if (visible) {
+        m_upcoming.clear();
+        m_upcomingLoading = true;
+        emit upcomingChanged();
+        fetchUpcoming(false);
+    } else {
+        m_upcomingLoading = false;
+        emit upcomingChanged();
+    }
+}
+
+void Backend::invalidateUpcomingCache()
+{
+    m_upcomingCache.clear();
+}
+
+void Backend::injectUpcomingMonthPayload(const QString &sport, const QString &league,
+                                         const QString &month, const QByteArray &payload)
+{
+    UpcomingCacheEntry entry;
+    entry.payload = payload;
+    m_upcomingCache.insert(leagueKey(sport, league) + "/" + month, entry);
+}
+
+void Backend::refreshUpcoming()
+{
+    if (!m_upcomingVisible)
+        return;
+    fetchUpcoming(true);
 }
 
 void Backend::openMatch(const QString &id)
@@ -764,6 +847,10 @@ void Backend::applyLeaguesChange()
 
 void Backend::refresh()
 {
+    if (m_upcomingVisible) {
+        refreshUpcoming();
+        return;
+    }
     if (!m_online)
         return;
 
@@ -995,6 +1082,13 @@ void Backend::cancelPending()
         obsolete->deleteLater();
     }
     cancelLiveRequests();
+    const QSet<QNetworkReply *> upcomingReplies = m_upcomingReplies;
+    m_upcomingReplies.clear();
+    for (QNetworkReply *reply : upcomingReplies) {
+        reply->abort();
+        reply->deleteLater();
+    }
+    m_upcomingPending = 0;
 }
 
 void Backend::fetchStandings()
@@ -1266,6 +1360,135 @@ QVariantMap Backend::parseMatchSummary(const QByteArray &payload, const QVariant
     return result;
 }
 
+void Backend::fetchUpcoming(bool force)
+{
+    const QVariantMap currentLeague = league();
+    const QString sport = currentLeague.value("sport").toString();
+    const QString leagueSlug = currentLeague.value("league").toString();
+    if (sport.isEmpty() || leagueSlug.isEmpty()) {
+        m_upcoming.clear();
+        m_upcomingLoading = false;
+        m_upcomingError = tr("No leagues selected");
+        emit upcomingChanged();
+        return;
+    }
+
+    // Cancel in-flight upcoming requests.
+    const QSet<QNetworkReply *> replies = m_upcomingReplies;
+    m_upcomingReplies.clear();
+    for (QNetworkReply *reply : replies) {
+        reply->abort();
+        reply->deleteLater();
+    }
+    m_upcomingPending = 0;
+
+    const QDate today = QDate::currentDate();
+    const QDate currentMonth(today.year(), today.month(), 1);
+    const QDate nextMonth = currentMonth.addMonths(1);
+    const QString currentKey = leagueKey(sport, leagueSlug) + "/" + currentMonth.toString("yyyyMM");
+    const QString nextKey = leagueKey(sport, leagueSlug) + "/" + nextMonth.toString("yyyyMM");
+
+    auto isFresh = [](const UpcomingCacheEntry &entry) {
+        return entry.fetchedAt.isValid() && entry.fetchedAt.secsTo(QDateTime::currentDateTime()) < 300;
+    };
+
+    bool needCurrent = force || !m_upcomingCache.contains(currentKey) || !isFresh(m_upcomingCache.value(currentKey));
+    bool needNext = force || !m_upcomingCache.contains(nextKey) || !isFresh(m_upcomingCache.value(nextKey));
+
+    if (!needCurrent && !needNext) {
+        QString parseError;
+        m_upcoming = parseUpcomingSchedule(m_upcomingCache.value(currentKey).payload,
+                                           m_upcomingCache.value(nextKey).payload,
+                                           today, &parseError, sport, leagueSlug);
+        m_upcomingLoading = false;
+        m_upcomingError = parseError;
+        emit upcomingChanged();
+        return;
+    }
+
+    m_upcomingLoading = true;
+    m_upcomingError.clear();
+    emit upcomingChanged();
+
+    struct MonthTask {
+        QString key;
+        QString month;
+        bool needed;
+        QUrl url;
+    };
+    const QList<MonthTask> tasks = {
+        {currentKey, currentMonth.toString("yyyyMM"), needCurrent, scoreboardMonthUrl(sport, leagueSlug, currentMonth)},
+        {nextKey, nextMonth.toString("yyyyMM"), needNext, scoreboardMonthUrl(sport, leagueSlug, nextMonth)},
+    };
+
+    m_upcomingHadNetworkError = false;
+    m_upcomingNetworkError.clear();
+    m_upcomingPending = 0;
+
+    auto finalize = [this, sport, leagueSlug, today, currentKey, nextKey]() {
+        QString parseError;
+        m_upcoming = parseUpcomingSchedule(m_upcomingCache.value(currentKey).payload,
+                                           m_upcomingCache.value(nextKey).payload,
+                                           today, &parseError, sport, leagueSlug);
+        m_upcomingLoading = false;
+        if (m_upcomingHadNetworkError && m_upcoming.isEmpty())
+            m_upcomingError = m_upcomingNetworkError.isEmpty() ? tr("Could not load schedule") : m_upcomingNetworkError;
+        else
+            m_upcomingError = parseError;
+        emit upcomingChanged();
+    };
+
+    for (const auto &task : tasks) {
+        if (!task.needed)
+            continue;
+
+        ++m_upcomingNetworkRequests;
+        if (m_online) {
+            ++m_upcomingPending;
+            QNetworkRequest request(task.url);
+            request.setTransferTimeout(15000);
+            request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+            QNetworkReply *reply = m_network.get(request);
+            m_upcomingReplies.insert(reply);
+            connect(reply, &QNetworkReply::finished, this, [this, reply, key = task.key, finalize] {
+                if (!m_upcomingReplies.contains(reply))
+                    return;
+                m_upcomingReplies.remove(reply);
+                const QByteArray payload = reply->readAll();
+                const QString networkError = reply->error() == QNetworkReply::NoError
+                                               ? QString() : reply->errorString();
+                reply->deleteLater();
+                if (networkError.isEmpty()) {
+                    UpcomingCacheEntry entry;
+                    entry.payload = payload;
+                    entry.fetchedAt = QDateTime::currentDateTime();
+                    m_upcomingCache.insert(key, entry);
+                } else {
+                    m_upcomingHadNetworkError = true;
+                    if (m_upcomingNetworkError.isEmpty())
+                        m_upcomingNetworkError = networkError;
+                }
+                if (--m_upcomingPending <= 0)
+                    finalize();
+            });
+        } else {
+            // Offline/test: rely on injected payloads placed in cache for the month key.
+            if (!m_upcomingCache.contains(task.key)) {
+                m_upcomingHadNetworkError = true;
+                if (m_upcomingNetworkError.isEmpty())
+                    m_upcomingNetworkError = tr("Could not load schedule");
+            } else {
+                UpcomingCacheEntry entry = m_upcomingCache.value(task.key);
+                entry.fetchedAt = QDateTime::currentDateTime();
+                m_upcomingCache.insert(task.key, entry);
+            }
+        }
+    }
+
+    if (m_upcomingPending == 0)
+        finalize();
+}
+
 void Backend::retranslate()
 {
     m_leagues = leagueCatalog();
@@ -1275,6 +1498,7 @@ void Backend::retranslate()
     emit dateChanged();
     emit eventsChanged();
     emit standingsChanged();
+    emit upcomingChanged();
 }
 
 void Backend::notifyAll()
@@ -1403,6 +1627,16 @@ QUrl Backend::scoreboardUrl(const QString &sport, const QString &league, const Q
     QUrlQuery query;
     // ESPN expects the day in its own format, and reads ?dates=YYYYMMDD.
     query.addQueryItem("dates", date.toString("yyyyMMdd"));
+    url.setQuery(query);
+    return url;
+}
+
+QUrl Backend::scoreboardMonthUrl(const QString &sport, const QString &league, const QDate &monthDate)
+{
+    QUrl url(QStringLiteral("https://site.api.espn.com/apis/site/v2/sports/%1/%2/scoreboard")
+                 .arg(sport, league));
+    QUrlQuery query;
+    query.addQueryItem("dates", monthDate.toString("yyyyMM"));
     url.setQuery(query);
     return url;
 }
@@ -1720,6 +1954,181 @@ QVariantList Backend::liveEventsFrom(const QVariantList &scoreboardEvents, const
         live.append(item);
     }
     return live;
+}
+
+QVariantList Backend::parseUpcomingSchedule(const QByteArray &currentMonthPayload,
+                                             const QByteArray &nextMonthPayload,
+                                             const QDate &today, QString *error,
+                                             const QString &sport, const QString &league,
+                                             int limit)
+{
+    if (error)
+        error->clear();
+
+    QString currentError;
+    QString nextError;
+    const QVariantList currentEvents = parseScoreboard(currentMonthPayload, &currentError, sport, league);
+    const QVariantList nextEvents = parseScoreboard(nextMonthPayload, &nextError, sport, league);
+
+    if (!currentError.isEmpty() && !nextError.isEmpty()) {
+        if (error)
+            *error = currentError;
+        return {};
+    }
+    if (!currentError.isEmpty() && error)
+        *error = currentError;
+    if (!nextError.isEmpty() && error)
+        *error = nextError;
+
+    QVariantList merged = currentEvents;
+    for (const auto &event : nextEvents)
+        merged.append(event);
+
+    // Reuse the existing deduplication rules (same teams within 36 h, in > post > pre).
+    QVariantList deduped;
+    for (const auto &value : merged) {
+        const QVariantMap event = value.toMap();
+        const QString key = [&event]() {
+            const QVariantList teams = event.value("teams").toList();
+            if (teams.size() != 2)
+                return QString();
+            QStringList ids;
+            for (const auto &teamValue : teams) {
+                const QVariantMap team = teamValue.toMap();
+                QString id = team.value("id").toString();
+                if (id.isEmpty())
+                    id = team.value("abbreviation").toString();
+                if (id.isEmpty())
+                    id = team.value("name").toString();
+                ids.append(id.trimmed().toLower());
+            }
+            std::sort(ids.begin(), ids.end());
+            return ids.join(QLatin1Char('|'));
+        }();
+        const QDateTime start = QDateTime::fromString(event.value("start").toString(), Qt::ISODate);
+        bool mergedDuplicate = false;
+        if (!key.isEmpty() && start.isValid()) {
+            auto stateRank = [](const QString &state) {
+                if (state == QLatin1String("in"))
+                    return 2;
+                if (state == QLatin1String("post"))
+                    return 1;
+                return 0;
+            };
+            auto isZeroZero = [](const QVariantMap &candidate) {
+                const QVariantList teams = candidate.value("teams").toList();
+                if (teams.size() != 2)
+                    return false;
+                for (const auto &teamValue : teams) {
+                    const QString score = teamValue.toMap().value("score").toString().trimmed();
+                    if (score.isEmpty() || score == QStringLiteral("0"))
+                        continue;
+                    return false;
+                }
+                return true;
+            };
+            auto preferredOver = [&](const QVariantMap &candidate, const QVariantMap &current) {
+                const int candRank = stateRank(candidate.value("state").toString());
+                const int curRank = stateRank(current.value("state").toString());
+                if (candRank != curRank)
+                    return candRank > curRank;
+                const bool candZero = isZeroZero(candidate);
+                const bool curZero = isZeroZero(current);
+                if (candZero != curZero)
+                    return !candZero;
+                return false;
+            };
+            for (int i = 0; i < deduped.size(); ++i) {
+                const QVariantMap existing = deduped.at(i).toMap();
+                const QString existingKey = [&existing]() {
+                    const QVariantList teams = existing.value("teams").toList();
+                    if (teams.size() != 2)
+                        return QString();
+                    QStringList ids;
+                    for (const auto &teamValue : teams) {
+                        const QVariantMap team = teamValue.toMap();
+                        QString id = team.value("id").toString();
+                        if (id.isEmpty())
+                            id = team.value("abbreviation").toString();
+                        if (id.isEmpty())
+                            id = team.value("name").toString();
+                        ids.append(id.trimmed().toLower());
+                    }
+                    std::sort(ids.begin(), ids.end());
+                    return ids.join(QLatin1Char('|'));
+                }();
+                if (existingKey != key)
+                    continue;
+                const QDateTime otherStart = QDateTime::fromString(existing.value("start").toString(), Qt::ISODate);
+                if (!otherStart.isValid())
+                    continue;
+                if (qAbs(start.secsTo(otherStart)) > 36 * 3600)
+                    continue;
+                if (preferredOver(event, existing))
+                    deduped[i] = event;
+                mergedDuplicate = true;
+                break;
+            }
+        }
+        if (!mergedDuplicate)
+            deduped.append(event);
+    }
+
+    const QDateTime startOfToday(today, QTime(0, 0));
+    QVariantList upcoming;
+    for (const auto &value : deduped) {
+        const QVariantMap event = value.toMap();
+        if (event.value("state").toString() != QLatin1String("pre"))
+            continue;
+        const QDateTime start = QDateTime::fromString(event.value("start").toString(), Qt::ISODate).toLocalTime();
+        if (!start.isValid() || start < startOfToday)
+            continue;
+        QVariantMap item = event;
+        item.insert("localStart", start);
+        item.insert("localDate", start.date());
+        item.insert("timeLabel", QLocale().toString(start.time(), QLocale::ShortFormat));
+        upcoming.append(item);
+    }
+
+    std::sort(upcoming.begin(), upcoming.end(), [](const QVariant &left, const QVariant &right) {
+        return left.toMap().value("localStart").toDateTime()
+             < right.toMap().value("localStart").toDateTime();
+    });
+
+    if (limit > 0 && upcoming.size() > limit)
+        upcoming = upcoming.mid(0, limit);
+
+    QVariantList groups;
+    QDate currentDate;
+    QVariantList matches;
+    for (const auto &value : upcoming) {
+        const QVariantMap event = value.toMap();
+        const QDate day = event.value("localDate").toDate();
+        if (day != currentDate) {
+            if (!matches.isEmpty()) {
+                QVariantMap group;
+                group.insert("dateIso", currentDate.toString(Qt::ISODate));
+                group.insert("label", QLocale().toString(currentDate, "ddd d MMM"));
+                group.insert("matches", matches);
+                groups.append(group);
+                matches.clear();
+            }
+            currentDate = day;
+        }
+        QVariantMap match = event;
+        match.remove("localStart");
+        match.remove("localDate");
+        matches.append(match);
+    }
+    if (!matches.isEmpty()) {
+        QVariantMap group;
+        group.insert("dateIso", currentDate.toString(Qt::ISODate));
+        group.insert("label", QLocale().toString(currentDate, "ddd d MMM"));
+        group.insert("matches", matches);
+        groups.append(group);
+    }
+
+    return groups;
 }
 
 QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error,

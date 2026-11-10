@@ -110,5 +110,12 @@
   "Text size": "Taille du texte",
   "Compact": "Compact",
   "Normal": "Normal",
-  "Large": "Grand"
+  "Large": "Grand",
+  "Upcoming": "À venir",
+  "A upcoming": "A à venir",
+  "Upcoming matches": "Matchs à venir",
+  "Loading schedule…": "Chargement du calendrier…",
+  "Could not load schedule": "Impossible de charger le calendrier",
+  "Press R to retry.": "Appuyez sur R pour réessayer.",
+  "No upcoming matches.": "Aucun match à venir"
 }
