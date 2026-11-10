@@ -382,6 +382,47 @@ private slots:
         QCOMPARE(Backend::liveCountOf(events), 0);
     }
 
+    void parseScoreboardDeduplicatesGhostAndReversedFixtures()
+    {
+        // Même affiche à moins de 36 h, dont une inversée et non jouée (pre, 0-0) :
+        // on conserve le vrai match terminé.
+        const char *payload = R"({
+          "events": [
+            {
+              "id": "ghost",
+              "name": "Perpignan at Section Paloise",
+              "date": "2026-11-07T15:00Z",
+              "status": {"type": {"state": "pre", "detail": "Sat, November 7th", "shortDetail": "11/7", "completed": false}},
+              "competitions": [{"competitors": [
+                {"homeAway": "home", "score": "0",
+                 "team": {"id": "1", "displayName": "Section Paloise", "abbreviation": "PAU"}},
+                {"homeAway": "away", "score": "0",
+                 "team": {"id": "2", "displayName": "Perpignan", "abbreviation": "PER"}}
+              ]}]
+            },
+            {
+              "id": "real",
+              "name": "Section Paloise at Perpignan",
+              "date": "2026-11-07T15:00Z",
+              "status": {"type": {"state": "post", "detail": "FT", "shortDetail": "FT", "completed": true}},
+              "competitions": [{"competitors": [
+                {"homeAway": "home", "score": "26",
+                 "team": {"id": "2", "displayName": "Perpignan", "abbreviation": "PER"}},
+                {"homeAway": "away", "score": "63",
+                 "team": {"id": "1", "displayName": "Section Paloise", "abbreviation": "PAU"}}
+              ]}]
+            }
+          ]
+        })";
+
+        QString error;
+        const QVariantList events = Backend::parseScoreboard(payload, &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(events.size(), 1);
+        QCOMPARE(events.first().toMap().value("id").toString(), QStringLiteral("real"));
+        QCOMPARE(events.first().toMap().value("state").toString(), QStringLiteral("post"));
+    }
+
     void parseScoreboardHandlesEmptyAndBrokenPayloads()
     {
         QString error;

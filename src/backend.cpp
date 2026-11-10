@@ -1573,10 +1573,86 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
         events.append(item);
     }
 
-    std::sort(events.begin(), events.end(), [](const QVariant &left, const QVariant &right) {
+    auto stateRank = [](const QString &state) {
+        if (state == QLatin1String("in"))
+            return 2;
+        if (state == QLatin1String("post"))
+            return 1;
+        return 0; // pre ou inconnu
+    };
+    auto teamPairKey = [](const QVariantMap &event) {
+        const QVariantList teams = event.value("teams").toList();
+        if (teams.size() != 2)
+            return QString();
+        QStringList ids;
+        for (const auto &value : teams) {
+            const QVariantMap team = value.toMap();
+            QString id = team.value("id").toString();
+            if (id.isEmpty())
+                id = team.value("abbreviation").toString();
+            if (id.isEmpty())
+                id = team.value("name").toString();
+            ids.append(id.trimmed().toLower());
+        }
+        std::sort(ids.begin(), ids.end());
+        return ids.join(QLatin1Char('|'));
+    };
+    auto isZeroZero = [](const QVariantMap &event) {
+        const QVariantList teams = event.value("teams").toList();
+        if (teams.size() != 2)
+            return false;
+        for (const auto &value : teams) {
+            const QString score = value.toMap().value("score").toString().trimmed();
+            if (score.isEmpty() || score == QStringLiteral("0"))
+                continue;
+            return false;
+        }
+        return true;
+    };
+    auto preferredOver = [&](const QVariantMap &candidate, const QVariantMap &current) {
+        const int candRank = stateRank(candidate.value("state").toString());
+        const int curRank = stateRank(current.value("state").toString());
+        if (candRank != curRank)
+            return candRank > curRank;
+        const bool candZero = isZeroZero(candidate);
+        const bool curZero = isZeroZero(current);
+        if (candZero != curZero)
+            return !candZero;
+        return false;
+    };
+
+    QVariantList deduped;
+    for (const auto &value : events) {
+        const QVariantMap event = value.toMap();
+        const QString key = teamPairKey(event);
+        const QDateTime start = QDateTime::fromString(event.value("start").toString(), Qt::ISODate);
+        bool merged = false;
+        if (!key.isEmpty() && start.isValid()) {
+            for (int i = 0; i < deduped.size(); ++i) {
+                const QVariantMap existing = deduped.at(i).toMap();
+                if (teamPairKey(existing) != key)
+                    continue;
+                const QDateTime otherStart = QDateTime::fromString(existing.value("start").toString(), Qt::ISODate);
+                if (!otherStart.isValid())
+                    continue;
+                const qint64 diff = qAbs(start.secsTo(otherStart));
+                if (diff > 36 * 3600)
+                    continue;
+                // Même affiche : on conserve le meilleur état, sinon le score non nul.
+                if (preferredOver(event, existing))
+                    deduped[i] = event;
+                merged = true;
+                break;
+            }
+        }
+        if (!merged)
+            deduped.append(event);
+    }
+
+    std::sort(deduped.begin(), deduped.end(), [](const QVariant &left, const QVariant &right) {
         return left.toMap().value("start").toString() < right.toMap().value("start").toString();
     });
-    return events;
+    return deduped;
 }
 
 int Backend::liveCountOf(const QVariantList &events)
