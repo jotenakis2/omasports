@@ -1,0 +1,193 @@
+#include <QtTest>
+#include <QGuiApplication>
+#include <QQmlContext>
+#include <QQmlEngine>
+#include <QQuickItem>
+#include <QQuickView>
+#include <QVariantList>
+#include <QVariantMap>
+
+class StubTheme : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(int radius MEMBER m_radius CONSTANT)
+    Q_PROPERTY(QString card MEMBER m_card CONSTANT)
+    Q_PROPERTY(QString foreground MEMBER m_foreground CONSTANT)
+    Q_PROPERTY(QString accent MEMBER m_accent CONSTANT)
+    Q_PROPERTY(QString mutedForeground MEMBER m_mutedForeground CONSTANT)
+    Q_PROPERTY(QString selection MEMBER m_selection CONSTANT)
+public:
+    int m_radius = 8;
+    QString m_card = "#1a1a1f";
+    QString m_foreground = "#f2f2f4";
+    QString m_accent = "#FFD60A";
+    QString m_mutedForeground = "#888888";
+    QString m_selection = "#2a2a31";
+};
+
+class StubBackend : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QString dateIso MEMBER m_dateIso CONSTANT)
+    Q_PROPERTY(QVariantMap league READ league CONSTANT)
+public:
+    QString m_dateIso = "2026-11-10";
+    QVariantMap league() const
+    {
+        return {{"sport", "soccer"}, {"league", "fra.1"}, {"name", "Ligue 1"}};
+    }
+    Q_INVOKABLE QString recordLabel(const QString &, const QString &record) const { return record; }
+};
+
+class StubTranslator : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QString language MEMBER m_language CONSTANT)
+public:
+    QString m_language = "en";
+};
+
+class EventCardGeometryTests : public QObject {
+    Q_OBJECT
+
+private:
+    QVariantMap team(const QString &name, const QString &score, const QString &record,
+                     const QString &logo) const
+    {
+        return {{"name", name},
+                {"abbreviation", name.left(3).toUpper()},
+                {"score", score},
+                {"record", record},
+                {"logo", logo},
+                {"color", "123456"},
+                {"winner", false}};
+    }
+
+    QVariantMap model(const QString &homeName, const QString &awayName, const QString &record,
+                      const QString &logo, const QVariantList &goals) const
+    {
+        return {{"name", homeName + " v " + awayName},
+                {"state", "post"},
+                {"shortDetail", "FT"},
+                {"detail", "Full Time"},
+                {"start", "2026-11-10T20:00:00Z"},
+                {"sport", "soccer"},
+                {"venue", "Stadium"},
+                {"goals", goals},
+                {"teams", QVariantList{team(homeName, "2", record, logo),
+                                       team(awayName, "1", record, logo)}}};
+    }
+
+    struct RowGeom {
+        qreal scoreX = -1;
+        qreal scoreY = -1;
+        qreal nameY = -1;
+    };
+
+    QList<RowGeom> measure(QQuickItem *card) const
+    {
+        QList<RowGeom> rows;
+        QObject *repeater = nullptr;
+        for (auto *o : card->findChildren<QObject *>()) {
+            if (QString(o->metaObject()->className()).contains("Repeater")) {
+                repeater = o;
+                break;
+            }
+        }
+        if (!repeater)
+            return rows;
+        const int count = repeater->property("count").toInt();
+        for (int i = 0; i < count; ++i) {
+            QQuickItem *item = nullptr;
+            QMetaObject::invokeMethod(repeater, "itemAt", Q_RETURN_ARG(QQuickItem *, item),
+                                      Q_ARG(int, i));
+            if (!item)
+                continue;
+            const auto names = item->findChildren<QQuickItem *>("nameText");
+            const auto scores = item->findChildren<QQuickItem *>("scoreText");
+            if (names.isEmpty() || scores.isEmpty())
+                continue;
+            RowGeom row;
+            row.scoreX = scores.first()->mapToItem(card, 0, 0).x();
+            row.scoreY = scores.first()->mapToItem(card, 0, 0).y();
+            row.nameY = names.first()->mapToItem(card, 0, 0).y();
+            rows.append(row);
+        }
+        return rows;
+    }
+
+    void settle(QQuickView &view)
+    {
+        if (auto *root = view.rootObject())
+            root->polish();
+        QCoreApplication::processEvents();
+        QTest::qWait(50);
+        QCoreApplication::processEvents();
+    }
+
+private slots:
+    void scoreGeometryIsStable();
+};
+
+void EventCardGeometryTests::scoreGeometryIsStable()
+{
+    StubTheme theme;
+    StubBackend backend;
+    StubTranslator translator;
+
+    const QVariantList noGoals;
+    const QVariantList goals = QVariantList{
+        QVariantMap{{"clock", "12'"}, {"scorer", "Scorer"}, {"teamAbbreviation", "HOM"},
+                    {"ownGoal", false}, {"penalty", false}, {"type", "Goal"}}};
+    const QVariantMap base = model("Home FC", "Away FC", "", "", noGoals);
+
+    QQuickView view;
+    view.engine()->rootContext()->setContextProperty("theme", &theme);
+    view.engine()->rootContext()->setContextProperty("backend", &backend);
+    view.engine()->rootContext()->setContextProperty("translator", &translator);
+    view.setResizeMode(QQuickView::SizeViewToRootObject);
+    view.setInitialProperties({{"modelData", base}, {"width", 420}});
+    view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
+    QVERIFY2(view.status() == QQuickView::Ready,
+             qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
+                                                : view.errors().first().toString()));
+
+    auto *root = view.rootObject();
+    QVERIFY(root);
+    view.show();
+    settle(view);
+    const QList<RowGeom> baseRows = measure(root);
+    QCOMPARE(baseRows.size(), 2);
+
+    const QList<QVariantMap> configs = {
+        model("Home FC", "Away FC", "3-1-5", "", noGoals), // avec/sans record
+        model("Home FC", "Away FC", "", "crest.png", noGoals), // avec/sans badge/logo
+        model("A very very very long team name that must elide",
+              "Another extremely long visiting team name", "", "", noGoals),
+        model("Home FC", "Away FC", "", "", goals), // présence de buteurs
+    };
+
+    for (int c = 0; c < configs.size(); ++c) {
+        root->setProperty("modelData", configs.at(c));
+        settle(view);
+        const QList<RowGeom> rows = measure(root);
+        QCOMPARE(rows.size(), 2);
+        for (int i = 0; i < rows.size(); ++i) {
+            QVERIFY2(qAbs(rows.at(i).scoreX - baseRows.at(i).scoreX) <= 1.0,
+                     qPrintable(QString("config %1 row %2 scoreX %3 vs %4")
+                                    .arg(c).arg(i).arg(rows.at(i).scoreX)
+                                    .arg(baseRows.at(i).scoreX)));
+            QVERIFY2(qAbs(rows.at(i).scoreY - rows.at(i).nameY) <= 1.0,
+                     qPrintable(QString("config %1 row %2 scoreY %3 vs nameY %4")
+                                    .arg(c).arg(i).arg(rows.at(i).scoreY)
+                                    .arg(rows.at(i).nameY)));
+        }
+    }
+}
+
+int main(int argc, char **argv)
+{
+    qputenv("QT_QPA_PLATFORM", QByteArray("offscreen"));
+    QGuiApplication app(argc, argv);
+    EventCardGeometryTests tc;
+    return QTest::qExec(&tc, argc, argv);
+}
+
+#include "eventcard_geometry_tests.moc"

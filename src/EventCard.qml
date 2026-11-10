@@ -112,9 +112,11 @@ Rectangle {
 
                         ColumnLayout {
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignTop
                             spacing: 0
 
                             Text {
+                                objectName: "nameText"
                                 Layout.fillWidth: true
                                 text: modelData.name
                                 color: theme.foreground
@@ -134,6 +136,7 @@ Rectangle {
                         }
 
                         Text {
+                            objectName: "scoreText"
                             Layout.preferredWidth: 46
                             Layout.alignment: Qt.AlignTop | Qt.AlignRight
                             horizontalAlignment: Text.AlignRight

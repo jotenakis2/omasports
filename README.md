@@ -98,12 +98,18 @@ bin/test    # Qt Test suite, offscreen
 ./check.sh  # shellcheck (bin/*, check.sh), compilation, puis tests offscreen
 ```
 
+Running the tests requires Qt Test and Qt Quick Test (module QML `QtTest` and
+`libQt6QuickTest`, provided by `qt6-declarative`). The geometry tests load QML
+components offscreen (`QT_QPA_PLATFORM=offscreen`) and make no network calls.
+
 `check.sh` agrège les contrôles (code de sortie non nul si une étape échoue) et
 sert de point d'entrée de validation avant commit.
 
 The scoreboard, match summary, and standings parsers, the league catalog,
 league filtering, persistence, and day navigation are covered by tests that
-never touch the network: `Backend` takes an offline flag for exactly that.
+never touch the network: `Backend` takes an offline flag for exactly that. The
+`EventCard` score column alignment is verified by geometry tests (measured item
+positions in an offscreen `QQuickView`), not by scanning QML source text.
 
 Adding a league is one line in the `catalog` table in `src/backend.cpp`, using
 ESPN's sport and league slugs. Its scoreboard lives at

@@ -3,11 +3,16 @@
 set -eu
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
-mkdir -p "${ROOT}/build/tests"
-cd "${ROOT}/build/tests"
-
 CORES="$(nproc)"
 
+mkdir -p "${ROOT}/build/tests"
+cd "${ROOT}/build/tests"
 qmake6 "${ROOT}/tests/omasports_tests.pro"
 make -j"${CORES}"
 QT_QPA_PLATFORM=offscreen ./omasports_tests
+
+mkdir -p "${ROOT}/build/tests-geometry"
+cd "${ROOT}/build/tests-geometry"
+qmake6 "${ROOT}/tests/eventcard_geometry_tests.pro"
+make -j"${CORES}"
+QT_QPA_PLATFORM=offscreen ./eventcard_geometry_tests
