@@ -108,11 +108,15 @@ int uniformMatchesPlayed(const QVariantList &groups)
         const QVariantList rows = groupValue.toMap().value("rows").toList();
         for (const auto &rowValue : rows) {
             ++totalTeams;
-            const QStringList cells = rowValue.toMap().value("cells").toStringList();
-            if (cells.isEmpty())
-                return -1;
+            const QVariantMap row = rowValue.toMap();
             bool ok = false;
-            const int played = cells.first().toInt(&ok);
+            int played = row.value("gamesPlayed").toInt(&ok);
+            if (!ok || !row.contains("gamesPlayed")) {
+                const QStringList cells = row.value("cells").toStringList();
+                if (cells.isEmpty())
+                    return -1;
+                played = cells.first().toInt(&ok);
+            }
             if (!ok)
                 return -1;
             if (uniform == -1)
@@ -1566,13 +1570,13 @@ QVariantList Backend::parseStandings(const QByteArray &payload, const QString &s
 
             QStringList cells;
             if (sport == "soccer") {
-                cells << display({"gamesPlayed"}) << display({"wins"}) << display({"ties"})
-                      << display({"losses"}) << display({"pointDifferential"})
-                      << display({"points"});
+                cells << display({"points"}) << display({"gamesPlayed"})
+                      << display({"wins"}) << display({"ties"})
+                      << display({"losses"}) << display({"pointDifferential"});
             } else if (sport == "rugby") {
-                cells << display({"gamesPlayed"}) << display({"wins", "gamesWon"})
-                      << display({"ties", "gamesDrawn"}) << display({"losses", "gamesLost"})
-                      << display({"points"});
+                cells << display({"points"}) << display({"gamesPlayed"})
+                      << display({"wins", "gamesWon"})
+                      << display({"ties", "gamesDrawn"}) << display({"losses", "gamesLost"});
             } else if (sport == "football") {
                 cells << display({"wins"}) << display({"losses"}) << display({"ties"})
                       << display({"winPercent"});
@@ -1580,8 +1584,12 @@ QVariantList Backend::parseStandings(const QByteArray &payload, const QString &s
                 cells << display({"wins"}) << display({"losses"}) << display({"winPercent"})
                       << display({"gamesBehind"});
             } else if (sport == "hockey") {
-                cells << display({"wins"}) << display({"losses"}) << display({"otLosses"})
-                      << display({"points"});
+                const QString gamesPlayed = display({"gamesPlayed", "games", "gp"});
+                if (!gamesPlayed.isEmpty())
+                    cells << display({"points"}) << gamesPlayed;
+                else
+                    cells << display({"points"});
+                cells << display({"wins"}) << display({"losses"}) << display({"otLosses"});
             } else {
                 return {};
             }
@@ -1592,10 +1600,19 @@ QVariantList Backend::parseStandings(const QByteArray &payload, const QString &s
             teamMap.insert("logo", teamLogo(team));
             teamMap.insert("color", team.value("color").toString());
 
+            int gamesPlayed = int(numeric("gamesPlayed"));
+            if (gamesPlayed == 0) {
+                bool ok = false;
+                const int fromDisplay = display({"gamesPlayed"}).toInt(&ok);
+                if (ok)
+                    gamesPlayed = fromDisplay;
+            }
+
             QVariantMap row;
             row.insert("rank", rank);
             row.insert("team", teamMap);
             row.insert("cells", cells);
+            row.insert("gamesPlayed", gamesPlayed);
             rows.append(row);
         }
 
@@ -1618,15 +1635,15 @@ QVariantList Backend::parseStandings(const QByteArray &payload, const QString &s
 QStringList Backend::standingsHeadersFor(const QString &sport)
 {
     if (sport == "soccer")
-        return {tr("MP"), tr("W"), tr("D"), tr("L"), tr("GD"), tr("Pts")};
+        return {tr("Pts"), tr("MP"), tr("W"), tr("D"), tr("L"), tr("GD")};
     if (sport == "rugby")
-        return {tr("MP"), tr("W"), tr("D"), tr("L"), tr("Pts")};
+        return {tr("Pts"), tr("MP"), tr("W"), tr("D"), tr("L")};
     if (sport == "football")
         return {tr("W"), tr("L"), tr("T"), tr("Pct")};
     if (sport == "basketball" || sport == "baseball")
         return {tr("W"), tr("L"), tr("Pct"), tr("GB")};
     if (sport == "hockey")
-        return {tr("W"), tr("L"), tr("OTL"), tr("Pts")};
+        return {tr("Pts"), tr("W"), tr("L"), tr("OTL")};
     return {};
 }
 

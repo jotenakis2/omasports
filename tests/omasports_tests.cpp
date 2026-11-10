@@ -493,10 +493,14 @@ private slots:
         QCOMPARE(rows.first().toMap().value("team").toMap().value("name").toString(),
                  QStringLiteral("Paris Saint-Germain"));
         QCOMPARE(rows.first().toMap().value("cells").toStringList(),
-                 QStringList({"9", "6", "2", "1", "+11", "20"}));
+                 QStringList({"20", "9", "6", "2", "1", "+11"}));
 
         QCOMPARE(Backend::standingsHeadersFor("soccer"),
-                 QStringList({"MP", "W", "D", "L", "GD", "Pts"}));
+                 QStringList({"Pts", "MP", "W", "D", "L", "GD"}));
+        QCOMPARE(Backend::standingsHeadersFor("rugby"),
+                 QStringList({"Pts", "MP", "W", "D", "L"}));
+        QCOMPARE(Backend::standingsHeadersFor("hockey"),
+                 QStringList({"Pts", "W", "L", "OTL"}));
         QCOMPARE(Backend::standingsHeadersFor("basketball"),
                  QStringList({"W", "L", "Pct", "GB"}));
         QVERIFY(Backend::standingsHeadersFor("tennis").isEmpty());
@@ -579,9 +583,11 @@ private slots:
         QVERIFY(!chosen.value("uncertain").toBool());
         const QVariantList groups = chosen.value("groups").toList();
         QCOMPARE(groups.size(), 1);
-        QCOMPARE(groups.first().toMap().value("rows").toList().first().toMap()
-                     .value("cells").toStringList().first(),
-                 QStringLiteral("9"));
+        const QStringList firstCells =
+            groups.first().toMap().value("rows").toList().first().toMap()
+                  .value("cells").toStringList();
+        QCOMPARE(firstCells.value(0), QStringLiteral("20"));
+        QCOMPARE(firstCells.value(1), QStringLiteral("9"));
     }
 
     void standingsSeasonRejectsCompletedBrasileiraoTable()
@@ -672,6 +678,48 @@ private slots:
         QVERIFY(chosen.value("uncertain").toBool());
         QCOMPARE(chosen.value("season").toInt(), candidates.first());
         QVERIFY(chosen.value("groups").toList().isEmpty());
+    }
+
+    void standingsPointsComeFirstFromRecordedPayload()
+    {
+        const QByteArray recorded = R"({
+          "standings": {"entries": [
+            {
+              "team": {"displayName": "Stade Toulousain", "abbreviation": "TLS",
+                       "color": "000000", "logo": "tls.png"},
+              "stats": [
+                {"name": "gamesPlayed", "displayValue": "9"},
+                {"name": "wins", "displayValue": "7"},
+                {"name": "ties", "displayValue": "0"},
+                {"name": "losses", "displayValue": "2"},
+                {"name": "pointDifferential", "displayValue": "+68"},
+                {"name": "points", "displayValue": "32"},
+                {"name": "rank", "value": 1}
+              ]
+            },
+            {
+              "team": {"displayName": "Other", "abbreviation": "OTH"},
+              "stats": [
+                {"name": "gamesPlayed", "displayValue": "9"},
+                {"name": "wins", "displayValue": "1"},
+                {"name": "ties", "displayValue": "0"},
+                {"name": "losses", "displayValue": "8"},
+                {"name": "pointDifferential", "displayValue": "-10"},
+                {"name": "points", "displayValue": "5"},
+                {"name": "rank", "value": 2}
+              ]
+            }
+          ]}
+        })";
+        QString error;
+        const QVariantList groups = Backend::parseStandings(recorded, "soccer", &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(Backend::standingsHeadersFor("soccer").first(), QStringLiteral("Pts"));
+        QCOMPARE(Backend::standingsHeadersFor("soccer").value(1), QStringLiteral("MP"));
+        const QStringList cells = groups.first().toMap().value("rows").toList().first()
+                                      .toMap().value("cells").toStringList();
+        QCOMPARE(cells.value(0), QStringLiteral("32"));
+        QCOMPARE(cells.value(1), QStringLiteral("9"));
     }
 
     void standingsModeCoexistsWithLive()
