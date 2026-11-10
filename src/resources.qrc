@@ -2,6 +2,7 @@
     <qresource prefix="/">
         <file alias="Main.qml">Main.qml</file>
         <file alias="ActionButton.qml">ActionButton.qml</file>
+        <file alias="DayNavigation.qml">DayNavigation.qml</file>
         <file alias="EventCard.qml">EventCard.qml</file>
         <file alias="HelpOverlay.qml">HelpOverlay.qml</file>
         <file alias="LeagueSidebar.qml">LeagueSidebar.qml</file>

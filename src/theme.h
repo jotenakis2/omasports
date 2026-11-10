@@ -26,6 +26,7 @@ class Theme : public QObject {
     Q_PROPERTY(QString monoFamily READ monoFamily CONSTANT)
     Q_PROPERTY(qreal fontScale READ fontScale WRITE setFontScale NOTIFY fontScaleChanged)
     Q_PROPERTY(int scoreColumnWidth READ scoreColumnWidth NOTIFY fontScaleChanged)
+    Q_PROPERTY(int dayBoxWidth READ dayBoxWidth NOTIFY fontScaleChanged)
     // Font size roles (at fontScale 1.0): fsTiny=9, fsCaption=10, fsSmall=11,
     // fsBody=12, fsBodyLarge=13, fsName=14, fsNameLarge=15, fsSubtitle=16,
     // fsSubtitleLarge=17, fsScore=20, fsTitle=26, fsHero=30, fsDisplay=40.
@@ -64,6 +65,7 @@ public:
     qreal fontScale() const { return m_fontScale; }
     void setFontScale(qreal scale);
     int scoreColumnWidth() const;
+    int dayBoxWidth() const;
 
     // Font size roles: historical values at scale 1.0.
     int fsTiny() const;          // 9

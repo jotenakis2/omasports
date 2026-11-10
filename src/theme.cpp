@@ -137,6 +137,11 @@ int Theme::scoreColumnWidth() const
     return scaled(60);
 }
 
+int Theme::dayBoxWidth() const
+{
+    return scaled(168);
+}
+
 void Theme::reload() {
     refreshRounding();
     const auto paths = m_watcher.files() + m_watcher.directories();

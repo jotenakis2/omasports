@@ -15,11 +15,14 @@ class StubTheme : public QObject {
     Q_PROPERTY(QString card MEMBER m_card CONSTANT)
     Q_PROPERTY(QString foreground MEMBER m_foreground CONSTANT)
     Q_PROPERTY(QString accent MEMBER m_accent CONSTANT)
+    Q_PROPERTY(QString accentForeground MEMBER m_accentForeground CONSTANT)
     Q_PROPERTY(QString mutedForeground MEMBER m_mutedForeground CONSTANT)
     Q_PROPERTY(QString selection MEMBER m_selection CONSTANT)
+    Q_PROPERTY(QString line MEMBER m_line CONSTANT)
     Q_PROPERTY(QString monoFamily MEMBER m_monoFamily CONSTANT)
     Q_PROPERTY(qreal fontScale MEMBER m_fontScale NOTIFY fontScaleChanged)
     Q_PROPERTY(int scoreColumnWidth READ scoreColumnWidth NOTIFY fontScaleChanged)
+    Q_PROPERTY(int dayBoxWidth READ dayBoxWidth NOTIFY fontScaleChanged)
     Q_PROPERTY(int fsTiny READ fsTiny NOTIFY fontScaleChanged)
     Q_PROPERTY(int fsCaption READ fsCaption NOTIFY fontScaleChanged)
     Q_PROPERTY(int fsSmall READ fsSmall NOTIFY fontScaleChanged)
@@ -39,13 +42,16 @@ public:
     QString m_card = "#1a1a1f";
     QString m_foreground = "#f2f2f4";
     QString m_accent = "#FFD60A";
+    QString m_accentForeground = "#000000";
     QString m_mutedForeground = "#888888";
     QString m_selection = "#2a2a31";
+    QString m_line = "#3a3a40";
     QString m_monoFamily = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
     qreal m_fontScale = 1.0;
 
     int scaled(int base) const { return qRound(base * m_fontScale); }
     int scoreColumnWidth() const { return scaled(60); }
+    int dayBoxWidth() const { return scaled(168); }
     int fsTiny() const { return scaled(9); }
     int fsCaption() const { return scaled(10); }
     int fsSmall() const { return scaled(11); }
@@ -196,6 +202,7 @@ private slots:
     void asymmetricScoreGeometry();
     void threeDigitScoresAlignRightEdge();
     void controlSnapshots();
+    void dayNavigationStaysFixed();
 };
 
 void EventCardGeometryTests::saveSnapshot(QQuickView &view, const QString &path)
@@ -459,6 +466,102 @@ void EventCardGeometryTests::controlSnapshots()
         view.show();
         settle(view);
         saveSnapshot(view, entry.second);
+    }
+}
+
+void EventCardGeometryTests::dayNavigationStaysFixed()
+{
+    const QStringList longLabels = {
+        QStringLiteral("sam. 30 sept. 2026"),
+        QStringLiteral("Wed. 30 Sept. 2026"),
+    };
+
+    for (qreal scale : {0.9, 1.0, 1.2}) {
+        StubTheme theme;
+        theme.setScale(scale);
+        StubBackend backend;
+        StubTranslator translator;
+
+        QQuickView view;
+        view.engine()->rootContext()->setContextProperty("theme", &theme);
+        view.engine()->rootContext()->setContextProperty("backend", &backend);
+        view.engine()->rootContext()->setContextProperty("translator", &translator);
+        view.setResizeMode(QQuickView::SizeViewToRootObject);
+        view.setInitialProperties({{"dateLabel", QStringLiteral("sam. 10 oct. 2026")},
+                                   {"isToday", true}});
+        view.setSource(QUrl(QStringLiteral("qrc:/DayNavigation.qml")));
+        QVERIFY2(view.status() == QQuickView::Ready,
+                 qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
+                                                    : view.errors().first().toString()));
+
+        auto *root = view.rootObject();
+        QVERIFY(root);
+        view.show();
+        settle(view);
+
+        auto *dateText = root->findChild<QQuickItem *>(QStringLiteral("dateText"));
+        auto *prevButton = root->findChild<QQuickItem *>(QStringLiteral("prevButton"));
+        auto *nextButton = root->findChild<QQuickItem *>(QStringLiteral("nextButton"));
+        QVERIFY(dateText);
+        QVERIFY(prevButton);
+        QVERIFY(nextButton);
+
+        const qreal dateXToday = dateText->mapToItem(root, 0, 0).x();
+        const qreal prevXToday = prevButton->mapToItem(root, 0, 0).x();
+        const qreal nextXToday = nextButton->mapToItem(root, 0, 0).x();
+        const qreal baseWidth = dateText->width();
+        const qreal baseHeight = dateText->height();
+        qInfo().noquote() << "daynav scale" << scale << "today dateX" << dateXToday << "prevX" << prevXToday << "nextX" << nextXToday
+                          << "width" << baseWidth;
+
+        if (qFuzzyCompare(scale, 1.0))
+            saveSnapshot(view, QStringLiteral("/tmp/omas-daynav-today.png"));
+
+        root->setProperty("isToday", false);
+        settle(view);
+
+        const qreal dateXOther = dateText->mapToItem(root, 0, 0).x();
+        const qreal prevXOther = prevButton->mapToItem(root, 0, 0).x();
+        const qreal nextXOther = nextButton->mapToItem(root, 0, 0).x();
+        qInfo().noquote() << "daynav scale" << scale << "other dateX" << dateXOther << "prevX" << prevXOther << "nextX" << nextXOther;
+
+        QVERIFY2(qAbs(dateXToday - dateXOther) <= 1.0,
+                 qPrintable(QStringLiteral("scale %1 date X %2 vs %3")
+                                .arg(scale).arg(dateXToday).arg(dateXOther)));
+        QVERIFY2(qAbs(prevXToday - prevXOther) <= 1.0,
+                 qPrintable(QStringLiteral("scale %1 prev X %2 vs %3")
+                                .arg(scale).arg(prevXToday).arg(prevXOther)));
+        QVERIFY2(qAbs(nextXToday - nextXOther) <= 1.0,
+                 qPrintable(QStringLiteral("scale %1 next X %2 vs %3")
+                                .arg(scale).arg(nextXToday).arg(nextXOther)));
+        QVERIFY2(qAbs(dateText->width() - baseWidth) <= 1.0,
+                 qPrintable(QStringLiteral("scale %1 date width changed %2 vs %3")
+                                .arg(scale).arg(baseWidth).arg(dateText->width())));
+
+        if (qFuzzyCompare(scale, 1.0))
+            saveSnapshot(view, QStringLiteral("/tmp/omas-daynav-other.png"));
+
+        for (const QString &label : longLabels) {
+            root->setProperty("dateLabel", label);
+            settle(view);
+            QVERIFY2(dateText->property("lineCount").toInt() == 1,
+                     qPrintable(QStringLiteral("scale %1 label '%2' lineCount %3")
+                                    .arg(scale, 0, 'f', 1)
+                                    .arg(label)
+                                    .arg(dateText->property("lineCount").toInt())));
+            QVERIFY2(dateText->property("contentWidth").toReal() <= dateText->width() + 0.5,
+                     qPrintable(QStringLiteral("scale %1 label '%2' contentWidth %3 > width %4")
+                                    .arg(scale, 0, 'f', 1)
+                                    .arg(label)
+                                    .arg(dateText->property("contentWidth").toReal())
+                                    .arg(dateText->width())));
+            QVERIFY2(qAbs(dateText->height() - baseHeight) <= 1.0,
+                     qPrintable(QStringLiteral("scale %1 label '%2' height %3 vs %4")
+                                    .arg(scale, 0, 'f', 1)
+                                    .arg(label)
+                                    .arg(dateText->height())
+                                    .arg(baseHeight)));
+        }
     }
 }
 

@@ -194,35 +194,13 @@ ApplicationWindow {
 
                 Item { Layout.fillWidth: true }
 
-                RowLayout {
+                DayNavigation {
                     visible: !backend.liveMode && !backend.standingsVisible
-                    spacing: 4
-
-                    ActionButton {
-                        text: "‹"
-                        onClicked: backend.previousDay()
-                    }
-
-                    Text {
-                        Layout.preferredWidth: 152
-                        text: backend.dateLabel
-                        color: theme.foreground
-                        font.pixelSize: theme.fsBodyLarge
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                    }
-
-                    ActionButton {
-                        text: "›"
-                        onClicked: backend.nextDay()
-                    }
-
-                    ActionButton {
-                        visible: !backend.isToday
-                        text: qsTr("Today")
-                        primary: true
-                        onClicked: backend.today()
-                    }
+                    dateLabel: backend.dateLabel
+                    isToday: backend.isToday
+                    onPrevious: backend.previousDay()
+                    onNext: backend.nextDay()
+                    onToday: backend.today()
                 }
 
                 ActionButton {
