@@ -976,6 +976,23 @@ private slots:
         QCOMPARE(Translator::pluralCategory("fr", 1000000), QString("many"));
     }
 
+    void checkScriptValidatesTheProject()
+    {
+        QFile file(QStringLiteral(SRCDIR "/../check.sh"));
+        if (!file.exists())
+            file.setFileName(QStringLiteral("check.sh"));
+        QVERIFY2(file.exists(), "check.sh manquant");
+        QVERIFY2(file.permissions() & QFile::ExeUser, "check.sh doit être exécutable");
+        QVERIFY2(file.open(QIODevice::ReadOnly | QIODevice::Text), "check.sh illisible");
+        const QString content = QString::fromUtf8(file.readAll());
+        file.close();
+        QVERIFY(content.contains("# shellcheck enable=all"));
+        QVERIFY(content.contains("shellcheck"));
+        QVERIFY(content.contains("bin/build"));
+        QVERIFY(content.contains("bin/test"));
+        QVERIFY(content.contains("QT_QPA_PLATFORM=offscreen"));
+    }
+
     void catalogsHaveTheSameKeys()
     {
         QFile french(":/i18n/fr.json");

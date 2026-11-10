@@ -95,7 +95,11 @@ add one, copy `src/i18n/fr.json`, translate the values, and add the file to
 ```sh
 bin/build   # qmake6 + make into build/omasports
 bin/test    # Qt Test suite, offscreen
+./check.sh  # shellcheck (bin/*, check.sh), compilation, puis tests offscreen
 ```
+
+`check.sh` agrège les contrôles (code de sortie non nul si une étape échoue) et
+sert de point d'entrée de validation avant commit.
 
 The scoreboard, match summary, and standings parsers, the league catalog,
 league filtering, persistence, and day navigation are covered by tests that
