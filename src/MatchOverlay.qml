@@ -103,7 +103,7 @@ Item {
                     Layout.fillWidth: true
                     text: qsTr("Match")
                     color: theme.foreground
-                    font.pixelSize: 17
+                    font.pixelSize: theme.fsSubtitleLarge
                     font.bold: true
                 }
 
@@ -137,7 +137,7 @@ Item {
                         Layout.fillWidth: true
                         text: overlay.homeTeam ? overlay.homeTeam.name : ""
                         color: theme.foreground
-                        font.pixelSize: 14
+                        font.pixelSize: theme.fsName
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
@@ -147,7 +147,7 @@ Item {
                         Layout.fillWidth: true
                         text: overlay.recordLabel(overlay.homeTeam)
                         color: theme.mutedForeground
-                        font.pixelSize: 10
+                        font.pixelSize: theme.fsCaption
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
@@ -166,7 +166,7 @@ Item {
                         }
                         color: theme.foreground
                         font.family: theme.monoFamily
-                        font.pixelSize: 30
+                        font.pixelSize: theme.fsHero
                         font.bold: true
                     }
 
@@ -174,7 +174,7 @@ Item {
                         Layout.alignment: Qt.AlignHCenter
                         text: overlay.statusText()
                         color: backend.match.state === "in" ? theme.accent : theme.mutedForeground
-                        font.pixelSize: 11
+                        font.pixelSize: theme.fsSmall
                         font.bold: backend.match.state === "in"
                     }
 
@@ -183,7 +183,7 @@ Item {
                         visible: text.length > 0
                         text: backend.match.venue || ""
                         color: theme.mutedForeground
-                        font.pixelSize: 10
+                        font.pixelSize: theme.fsCaption
                     }
                 }
 
@@ -201,7 +201,7 @@ Item {
                         Layout.fillWidth: true
                         text: overlay.awayTeam ? overlay.awayTeam.name : ""
                         color: theme.foreground
-                        font.pixelSize: 14
+                        font.pixelSize: theme.fsName
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
                         elide: Text.ElideRight
@@ -211,7 +211,7 @@ Item {
                         Layout.fillWidth: true
                         text: overlay.recordLabel(overlay.awayTeam)
                         color: theme.mutedForeground
-                        font.pixelSize: 10
+                        font.pixelSize: theme.fsCaption
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }
@@ -262,7 +262,7 @@ Item {
                             Layout.alignment: Qt.AlignHCenter
                             text: qsTr("Loading match details…")
                             color: theme.mutedForeground
-                            font.pixelSize: 11
+                            font.pixelSize: theme.fsSmall
                         }
                     }
 
@@ -275,7 +275,7 @@ Item {
                             Layout.fillWidth: true
                             text: qsTr("Could not load match details")
                             color: theme.foreground
-                            font.pixelSize: 14
+                            font.pixelSize: theme.fsName
                             font.bold: true
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -284,7 +284,7 @@ Item {
                             Layout.fillWidth: true
                             text: backend.matchError
                             color: theme.mutedForeground
-                            font.pixelSize: 11
+                            font.pixelSize: theme.fsSmall
                             wrapMode: Text.WordWrap
                             horizontalAlignment: Text.AlignHCenter
                         }
@@ -305,7 +305,7 @@ Item {
                         Text {
                             text: qsTr("Goals")
                             color: theme.mutedForeground
-                            font.pixelSize: 10
+                            font.pixelSize: theme.fsCaption
                             font.bold: true
                             font.capitalization: Font.AllUppercase
                             font.letterSpacing: 1
@@ -324,12 +324,12 @@ Item {
                                     Layout.preferredWidth: 46
                                     text: modelData.clock
                                     color: theme.mutedForeground
-                                    font.pixelSize: 11
+                                    font.pixelSize: theme.fsSmall
                                 }
 
                                 Text {
                                     text: "⚽"
-                                    font.pixelSize: 11
+                                    font.pixelSize: theme.fsSmall
                                 }
 
                                 ColumnLayout {
@@ -340,7 +340,7 @@ Item {
                                         Layout.fillWidth: true
                                         text: modelData.scorer
                                         color: theme.foreground
-                                        font.pixelSize: 12
+                                        font.pixelSize: theme.fsBody
                                         elide: Text.ElideRight
                                     }
 
@@ -349,7 +349,7 @@ Item {
                                         visible: text.length > 0
                                         text: overlay.goalNote(modelData)
                                         color: theme.mutedForeground
-                                        font.pixelSize: 10
+                                        font.pixelSize: theme.fsCaption
                                     }
 
                                     Text {
@@ -358,7 +358,7 @@ Item {
                                         text: modelData.assist
                                                   ? qsTr("Assist: %1").arg(modelData.assist) : ""
                                         color: theme.mutedForeground
-                                        font.pixelSize: 10
+                                        font.pixelSize: theme.fsCaption
                                         elide: Text.ElideRight
                                     }
                                 }
@@ -366,7 +366,7 @@ Item {
                                 Text {
                                     text: modelData.teamAbbreviation || modelData.teamName || ""
                                     color: theme.mutedForeground
-                                    font.pixelSize: 10
+                                    font.pixelSize: theme.fsCaption
                                     font.bold: true
                                 }
                             }
@@ -381,7 +381,7 @@ Item {
                         Text {
                             text: qsTr("Cards")
                             color: theme.mutedForeground
-                            font.pixelSize: 10
+                            font.pixelSize: theme.fsCaption
                             font.bold: true
                             font.capitalization: Font.AllUppercase
                             font.letterSpacing: 1
@@ -400,7 +400,7 @@ Item {
                                     Layout.preferredWidth: 46
                                     text: modelData.clock
                                     color: theme.mutedForeground
-                                    font.pixelSize: 11
+                                    font.pixelSize: theme.fsSmall
                                 }
 
                                 Rectangle {
@@ -414,20 +414,20 @@ Item {
                                     Layout.fillWidth: true
                                     text: modelData.player
                                     color: theme.foreground
-                                    font.pixelSize: 12
+                                    font.pixelSize: theme.fsBody
                                     elide: Text.ElideRight
                                 }
 
                                 Text {
                                     text: overlay.cardLabel(modelData)
                                     color: theme.mutedForeground
-                                    font.pixelSize: 10
+                                    font.pixelSize: theme.fsCaption
                                 }
 
                                 Text {
                                     text: modelData.teamAbbreviation || modelData.teamName || ""
                                     color: theme.mutedForeground
-                                    font.pixelSize: 10
+                                    font.pixelSize: theme.fsCaption
                                     font.bold: true
                                 }
                             }
@@ -442,7 +442,7 @@ Item {
                         Text {
                             text: qsTr("Statistics")
                             color: theme.mutedForeground
-                            font.pixelSize: 10
+                            font.pixelSize: theme.fsCaption
                             font.bold: true
                             font.capitalization: Font.AllUppercase
                             font.letterSpacing: 1
@@ -461,7 +461,7 @@ Item {
                                     Layout.preferredWidth: 62
                                     text: modelData.home
                                     color: theme.foreground
-                                    font.pixelSize: 11
+                                    font.pixelSize: theme.fsSmall
                                     font.bold: true
                                 }
 
@@ -469,7 +469,7 @@ Item {
                                     Layout.fillWidth: true
                                     text: qsTr(modelData.label)
                                     color: theme.mutedForeground
-                                    font.pixelSize: 11
+                                    font.pixelSize: theme.fsSmall
                                     horizontalAlignment: Text.AlignHCenter
                                     elide: Text.ElideRight
                                 }
@@ -478,7 +478,7 @@ Item {
                                     Layout.preferredWidth: 62
                                     text: modelData.away
                                     color: theme.foreground
-                                    font.pixelSize: 11
+                                    font.pixelSize: theme.fsSmall
                                     font.bold: true
                                     horizontalAlignment: Text.AlignRight
                                 }
@@ -498,7 +498,7 @@ Item {
                                 ? qsTr("No details yet.")
                                 : qsTr("No details for this match.")
                         color: theme.mutedForeground
-                        font.pixelSize: 11
+                        font.pixelSize: theme.fsSmall
                         horizontalAlignment: Text.AlignHCenter
                     }
                 }

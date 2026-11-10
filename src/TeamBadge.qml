@@ -37,7 +37,7 @@ Item {
         text: badge.initials()
         visible: logo.status !== Image.Ready
         color: badge.lightColor ? "black" : "white"
-        font.pixelSize: Math.max(8, badge.size * 0.34)
+        font.pixelSize: Math.max(Math.round(8 * theme.fontScale), Math.round(badge.size * 0.34))
         font.bold: true
     }
 

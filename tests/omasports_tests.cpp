@@ -246,7 +246,7 @@ private slots:
         // Le score occupe une largeur fixe, aligné à droite sur la ligne du nom
         // (même rangée que le nom), indépendant du record/badge/nom long.
         QVERIFY(qml.contains("objectName: \"scoreText\""));
-        QVERIFY(qml.contains("Layout.preferredWidth: 60"));
+        QVERIFY(qml.contains("Layout.preferredWidth: theme.scoreColumnWidth"));
         QVERIFY(qml.contains("Layout.alignment: Qt.AlignBaseline | Qt.AlignRight"));
         QVERIFY(qml.contains("elide: Text.ElideNone"));
         QVERIFY(qml.contains("font.family: theme.monoFamily"));
@@ -1307,6 +1307,115 @@ private slots:
         QVERIFY(translations.contains("No games on this day."));
         QVERIFY(translations.contains("Soccer"));
         QVERIFY(translations.value("%n games").isObject());
+    }
+
+    void fontScaleRolesAtNormal_data()
+    {
+        QTest::addColumn<int>("expected");
+        QTest::addColumn<QString>("role");
+        QTest::newRow("fsTiny") << 9 << QStringLiteral("fsTiny");
+        QTest::newRow("fsCaption") << 10 << QStringLiteral("fsCaption");
+        QTest::newRow("fsSmall") << 11 << QStringLiteral("fsSmall");
+        QTest::newRow("fsBody") << 12 << QStringLiteral("fsBody");
+        QTest::newRow("fsBodyLarge") << 13 << QStringLiteral("fsBodyLarge");
+        QTest::newRow("fsName") << 14 << QStringLiteral("fsName");
+        QTest::newRow("fsNameLarge") << 15 << QStringLiteral("fsNameLarge");
+        QTest::newRow("fsSubtitle") << 16 << QStringLiteral("fsSubtitle");
+        QTest::newRow("fsSubtitleLarge") << 17 << QStringLiteral("fsSubtitleLarge");
+        QTest::newRow("fsScore") << 20 << QStringLiteral("fsScore");
+        QTest::newRow("fsTitle") << 26 << QStringLiteral("fsTitle");
+        QTest::newRow("fsHero") << 30 << QStringLiteral("fsHero");
+        QTest::newRow("fsDisplay") << 40 << QStringLiteral("fsDisplay");
+    }
+
+    void fontScaleRolesAtNormal()
+    {
+        QFETCH(int, expected);
+        QFETCH(QString, role);
+        QTemporaryDir dir;
+        Theme theme(dir.path());
+        QCOMPARE(theme.property(qPrintable(role)).toInt(), expected);
+    }
+
+    void fontScaleRolesFollowFactor()
+    {
+        QTemporaryDir dir;
+        Theme theme(dir.path());
+        theme.setFontScale(0.9);
+        QCOMPARE(theme.fsCaption(), qRound(10 * 0.9));
+        QCOMPARE(theme.fsName(), qRound(14 * 0.9));
+        QCOMPARE(theme.fsScore(), qRound(20 * 0.9));
+        QCOMPARE(theme.fsHero(), qRound(30 * 0.9));
+        QCOMPARE(theme.fsDisplay(), qRound(40 * 0.9));
+
+        theme.setFontScale(1.2);
+        QCOMPARE(theme.fsCaption(), qRound(10 * 1.2));
+        QCOMPARE(theme.fsName(), qRound(14 * 1.2));
+        QCOMPARE(theme.fsScore(), qRound(20 * 1.2));
+        QCOMPARE(theme.fsHero(), qRound(30 * 1.2));
+        QCOMPARE(theme.fsDisplay(), qRound(40 * 1.2));
+
+        const QList<int> compact = {theme.fsTiny(), theme.fsCaption(), theme.fsSmall(), theme.fsBody(),
+                                    theme.fsBodyLarge(), theme.fsName(), theme.fsNameLarge(),
+                                    theme.fsSubtitle(), theme.fsSubtitleLarge(), theme.fsScore(),
+                                    theme.fsTitle(), theme.fsHero(), theme.fsDisplay()};
+        theme.setFontScale(1.0);
+        const QList<int> normal = {theme.fsTiny(), theme.fsCaption(), theme.fsSmall(), theme.fsBody(),
+                                   theme.fsBodyLarge(), theme.fsName(), theme.fsNameLarge(),
+                                   theme.fsSubtitle(), theme.fsSubtitleLarge(), theme.fsScore(),
+                                   theme.fsTitle(), theme.fsHero(), theme.fsDisplay()};
+        theme.setFontScale(1.2);
+        const QList<int> large = {theme.fsTiny(), theme.fsCaption(), theme.fsSmall(), theme.fsBody(),
+                                  theme.fsBodyLarge(), theme.fsName(), theme.fsNameLarge(),
+                                  theme.fsSubtitle(), theme.fsSubtitleLarge(), theme.fsScore(),
+                                  theme.fsTitle(), theme.fsHero(), theme.fsDisplay()};
+        for (int i = 1; i < compact.size(); ++i) {
+            QVERIFY(compact.at(i) >= compact.at(i - 1));
+            QVERIFY(normal.at(i) >= normal.at(i - 1));
+            QVERIFY(large.at(i) >= large.at(i - 1));
+        }
+    }
+
+    void scoreColumnWidthScalesAndFitsThreeDigits()
+    {
+        QTemporaryDir dir;
+        Theme theme(dir.path());
+        QCOMPARE(theme.scoreColumnWidth(), 60);
+        theme.setFontScale(0.9);
+        QCOMPARE(theme.scoreColumnWidth(), qRound(60 * 0.9));
+        theme.setFontScale(1.2);
+        QCOMPARE(theme.scoreColumnWidth(), qRound(60 * 1.2));
+
+        for (qreal scale : {0.9, 1.0, 1.2}) {
+            theme.setFontScale(scale);
+            QFont font(theme.monoFamily(), theme.fsScore());
+            font.setBold(true);
+            const QFontMetricsF metrics(font);
+            const qreal textWidth = metrics.horizontalAdvance(QStringLiteral("123"));
+            QVERIFY2(theme.scoreColumnWidth() >= qCeil(textWidth),
+                     qPrintable(QStringLiteral("scale %1 width %2 text %3")
+                                    .arg(scale)
+                                    .arg(theme.scoreColumnWidth())
+                                    .arg(textWidth)));
+        }
+    }
+
+    void fontScalePersistsAcrossLaunches()
+    {
+        QTemporaryDir dir;
+        const QString settings = dir.filePath("settings.ini");
+        {
+            Backend backend(settings, false);
+            QCOMPARE(backend.fontScaleLevel(), 1);
+            backend.setFontScale(2);
+            QCOMPARE(backend.fontScaleLevel(), 2);
+            QCOMPARE(backend.fontScale(), 1.2);
+        }
+        {
+            Backend reopened(settings, false);
+            QCOMPARE(reopened.fontScaleLevel(), 2);
+            QCOMPARE(reopened.fontScale(), 1.2);
+        }
     }
 };
 

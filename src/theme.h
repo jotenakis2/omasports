@@ -24,6 +24,24 @@ class Theme : public QObject {
     Q_PROPERTY(bool dark READ dark NOTIFY changed)
     Q_PROPERTY(int radius READ radius NOTIFY changed)
     Q_PROPERTY(QString monoFamily READ monoFamily CONSTANT)
+    Q_PROPERTY(qreal fontScale READ fontScale WRITE setFontScale NOTIFY fontScaleChanged)
+    Q_PROPERTY(int scoreColumnWidth READ scoreColumnWidth NOTIFY fontScaleChanged)
+    // Font size roles (at fontScale 1.0): fsTiny=9, fsCaption=10, fsSmall=11,
+    // fsBody=12, fsBodyLarge=13, fsName=14, fsNameLarge=15, fsSubtitle=16,
+    // fsSubtitleLarge=17, fsScore=20, fsTitle=26, fsHero=30, fsDisplay=40.
+    Q_PROPERTY(int fsTiny READ fsTiny NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsCaption READ fsCaption NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsSmall READ fsSmall NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsBody READ fsBody NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsBodyLarge READ fsBodyLarge NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsName READ fsName NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsNameLarge READ fsNameLarge NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsSubtitle READ fsSubtitle NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsSubtitleLarge READ fsSubtitleLarge NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsScore READ fsScore NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsTitle READ fsTitle NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsHero READ fsHero NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsDisplay READ fsDisplay NOTIFY fontScaleChanged)
 
 public:
     explicit Theme(const QString &currentDirectory = {}, QObject *parent = nullptr,
@@ -43,14 +61,34 @@ public:
     bool dark() const { return m_dark; }
     int radius() const { return m_radius; }
     QString monoFamily() const { return m_monoFamily; }
+    qreal fontScale() const { return m_fontScale; }
+    void setFontScale(qreal scale);
+    int scoreColumnWidth() const;
+
+    // Font size roles: historical values at scale 1.0.
+    int fsTiny() const;          // 9
+    int fsCaption() const;       // 10
+    int fsSmall() const;         // 11
+    int fsBody() const;          // 12
+    int fsBodyLarge() const;     // 13
+    int fsName() const;          // 14
+    int fsNameLarge() const;     // 15
+    int fsSubtitle() const;      // 16
+    int fsSubtitleLarge() const; // 17
+    int fsScore() const;         // 20
+    int fsTitle() const;         // 26
+    int fsHero() const;          // 30
+    int fsDisplay() const;       // 40
 
     // Every `key = "#rrggbb"` line of an Omarchy theme's colors.toml.
     static QHash<QString, QString> readPalette(const QString &path);
 
 signals:
     void changed();
+    void fontScaleChanged();
 
 private:
+    int scaled(int base) const;
     void reload();
     void refreshRounding();
 
@@ -68,6 +106,7 @@ private:
     QString m_hyprctl;
     QString m_monoFamily = "monospace";
     int m_radius = 0;
+    qreal m_fontScale = 1.0;
     QProcess m_roundingProcess;
     QTimer m_roundingPoll, m_roundingTimeout;
 };

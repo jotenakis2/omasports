@@ -101,6 +101,42 @@ QString withAlpha(const QString &color, qreal alpha) {
 QString Theme::mutedForeground() const { return withAlpha(m_foreground, 0.55); }
 QString Theme::line() const { return withAlpha(m_foreground, 0.14); }
 
+void Theme::setFontScale(qreal scale)
+{
+    if (qFuzzyCompare(m_fontScale, scale))
+        return;
+    m_fontScale = scale;
+    emit fontScaleChanged();
+}
+
+int Theme::scaled(int base) const
+{
+    return qRound(base * m_fontScale);
+}
+
+// Font size roles: base value at scale 1.0 (historical). fsTiny=9, fsCaption=10,
+// fsSmall=11, fsBody=12, fsBodyLarge=13, fsName=14, fsNameLarge=15,
+// fsSubtitle=16, fsSubtitleLarge=17, fsScore=20, fsTitle=26, fsHero=30,
+// fsDisplay=40.
+int Theme::fsTiny() const { return scaled(9); }
+int Theme::fsCaption() const { return scaled(10); }
+int Theme::fsSmall() const { return scaled(11); }
+int Theme::fsBody() const { return scaled(12); }
+int Theme::fsBodyLarge() const { return scaled(13); }
+int Theme::fsName() const { return scaled(14); }
+int Theme::fsNameLarge() const { return scaled(15); }
+int Theme::fsSubtitle() const { return scaled(16); }
+int Theme::fsSubtitleLarge() const { return scaled(17); }
+int Theme::fsScore() const { return scaled(20); }
+int Theme::fsTitle() const { return scaled(26); }
+int Theme::fsHero() const { return scaled(30); }
+int Theme::fsDisplay() const { return scaled(40); }
+
+int Theme::scoreColumnWidth() const
+{
+    return scaled(60);
+}
+
 void Theme::reload() {
     refreshRounding();
     const auto paths = m_watcher.files() + m_watcher.directories();

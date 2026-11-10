@@ -72,7 +72,7 @@ Rectangle {
                         text: card.statusText()
                         horizontalAlignment: Text.AlignHCenter
                         color: card.live ? theme.accent : theme.mutedForeground
-                        font.pixelSize: 11
+                        font.pixelSize: theme.fsSmall
                         font.bold: card.live
                         wrapMode: Text.WordWrap
                     }
@@ -83,7 +83,7 @@ Rectangle {
                         text: qsTr("Live")
                         horizontalAlignment: Text.AlignHCenter
                         color: theme.accent
-                        font.pixelSize: 9
+                        font.pixelSize: theme.fsTiny
                         font.bold: true
                     }
                 }
@@ -125,20 +125,20 @@ Rectangle {
                                     Layout.alignment: Qt.AlignBaseline
                                     text: modelData.name
                                     color: theme.foreground
-                                    font.pixelSize: 14
+                                    font.pixelSize: theme.fsName
                                     elide: Text.ElideRight
                                     maximumLineCount: 1
                                 }
 
                                 Text {
                                     objectName: "scoreText"
-                                    Layout.preferredWidth: 60
+                                    Layout.preferredWidth: theme.scoreColumnWidth
                                     Layout.alignment: Qt.AlignBaseline | Qt.AlignRight
                                     horizontalAlignment: Text.AlignRight
                                     text: card.modelData.state === "pre" ? "" : modelData.score
                                     color: modelData.winner ? theme.accent : theme.foreground
                                     font.family: theme.monoFamily
-                                    font.pixelSize: 20
+                                    font.pixelSize: theme.fsScore
                                     font.bold: true
                                     elide: Text.ElideNone
                                 }
@@ -149,7 +149,7 @@ Rectangle {
                                 visible: text.length > 0
                                 text: card.recordLabel(modelData.record)
                                 color: theme.mutedForeground
-                                font.pixelSize: 10
+                                font.pixelSize: theme.fsCaption
                                 elide: Text.ElideRight
                             }
                         }
@@ -164,7 +164,7 @@ Rectangle {
             visible: card.goals.length > 0
             text: card.goalsText()
             color: theme.mutedForeground
-            font.pixelSize: 10
+            font.pixelSize: theme.fsCaption
             wrapMode: Text.WordWrap
             maximumLineCount: 2
             elide: Text.ElideRight
@@ -181,7 +181,7 @@ Rectangle {
             Layout.fillWidth: true
             text: card.modelData.name
             color: theme.foreground
-            font.pixelSize: 15
+            font.pixelSize: theme.fsNameLarge
             font.bold: true
             elide: Text.ElideRight
         }
@@ -190,7 +190,7 @@ Rectangle {
             Layout.fillWidth: true
             text: card.detailText()
             color: card.live ? theme.accent : theme.mutedForeground
-            font.pixelSize: 11
+            font.pixelSize: theme.fsSmall
             elide: Text.ElideRight
         }
 
@@ -199,7 +199,7 @@ Rectangle {
             visible: text.length > 0
             text: card.modelData.venue
             color: theme.mutedForeground
-            font.pixelSize: 10
+            font.pixelSize: theme.fsCaption
             elide: Text.ElideRight
         }
     }

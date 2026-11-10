@@ -53,7 +53,7 @@ Item {
                     anchors.margins: 8
                     text: qsTr("Standings season is uncertain.")
                     color: theme.foreground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
@@ -75,7 +75,7 @@ Item {
                         text: groupColumn.modelData.name.length > 0
                               ? qsTr(groupColumn.modelData.name) : ""
                         color: theme.mutedForeground
-                        font.pixelSize: 10
+                        font.pixelSize: theme.fsCaption
                         font.bold: true
                         font.capitalization: Font.AllUppercase
                         font.letterSpacing: 1
@@ -103,7 +103,7 @@ Item {
                                     Layout.preferredWidth: 28
                                     text: "#"
                                     color: theme.mutedForeground
-                                    font.pixelSize: 10
+                                    font.pixelSize: theme.fsCaption
                                     font.bold: true
                                 }
 
@@ -113,7 +113,7 @@ Item {
                                     Layout.fillWidth: true
                                     text: qsTr("Team")
                                     color: theme.mutedForeground
-                                    font.pixelSize: 10
+                                    font.pixelSize: theme.fsCaption
                                     font.bold: true
                                 }
 
@@ -127,7 +127,7 @@ Item {
                                         horizontalAlignment: Text.AlignRight
                                         text: modelData
                                         color: theme.mutedForeground
-                                        font.pixelSize: 10
+                                        font.pixelSize: theme.fsCaption
                                         font.bold: true
                                     }
                                 }
@@ -158,7 +158,7 @@ Item {
                                             Layout.preferredWidth: 28
                                             text: standingsRow.modelData.rank
                                             color: theme.mutedForeground
-                                            font.pixelSize: 11
+                                            font.pixelSize: theme.fsSmall
                                         }
 
                                         TeamBadge {
@@ -172,7 +172,7 @@ Item {
                                             Layout.fillWidth: true
                                             text: standingsRow.modelData.team.name
                                             color: theme.foreground
-                                            font.pixelSize: 12
+                                            font.pixelSize: theme.fsBody
                                             elide: Text.ElideRight
                                         }
 
@@ -186,7 +186,7 @@ Item {
                                                 horizontalAlignment: Text.AlignRight
                                                 text: modelData
                                                 color: theme.foreground
-                                                font.pixelSize: 11
+                                                font.pixelSize: theme.fsSmall
                                             }
                                         }
                                     }
@@ -221,7 +221,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             text: qsTr("Loading standings…")
             color: theme.mutedForeground
-            font.pixelSize: 12
+            font.pixelSize: theme.fsBody
         }
     }
 
@@ -235,7 +235,7 @@ Item {
             Layout.fillWidth: true
             text: qsTr("Could not load standings")
             color: theme.foreground
-            font.pixelSize: 16
+            font.pixelSize: theme.fsSubtitle
             font.bold: true
             horizontalAlignment: Text.AlignHCenter
         }
@@ -244,7 +244,7 @@ Item {
             Layout.fillWidth: true
             text: backend.error
             color: theme.mutedForeground
-            font.pixelSize: 11
+            font.pixelSize: theme.fsSmall
             wrapMode: Text.WordWrap
             horizontalAlignment: Text.AlignHCenter
         }
@@ -266,14 +266,14 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             text: "—"
             color: theme.mutedForeground
-            font.pixelSize: 40
+            font.pixelSize: theme.fsDisplay
         }
 
         Text {
             Layout.alignment: Qt.AlignHCenter
             text: qsTr("No standings for this competition.")
             color: theme.mutedForeground
-            font.pixelSize: 14
+            font.pixelSize: theme.fsName
         }
     }
 }

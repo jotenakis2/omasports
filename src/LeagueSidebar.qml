@@ -98,7 +98,7 @@ Rectangle {
                 Layout.fillWidth: true
                 text: qsTr("Leagues")
                 color: theme.mutedForeground
-                font.pixelSize: 10
+                font.pixelSize: theme.fsCaption
                 font.bold: true
                 font.capitalization: Font.AllUppercase
                 font.letterSpacing: 1
@@ -114,7 +114,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: "⚙"
                     color: gearHover.hovered ? theme.foreground : theme.mutedForeground
-                    font.pixelSize: 13
+                    font.pixelSize: theme.fsBodyLarge
                 }
 
                 HoverHandler { id: gearHover }
@@ -134,7 +134,7 @@ Rectangle {
                 placeholderText: qsTr("Search leagues")
                 placeholderTextColor: theme.mutedForeground
                 color: theme.foreground
-                font.pixelSize: 13
+                font.pixelSize: theme.fsBodyLarge
                 leftPadding: 11
                 rightPadding: 30
                 selectByMouse: true
@@ -181,7 +181,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: "/"
                     color: theme.mutedForeground
-                    font.pixelSize: 10
+                    font.pixelSize: theme.fsCaption
                     font.bold: true
                 }
 
@@ -241,7 +241,7 @@ Rectangle {
                         anchors.bottomMargin: 6
                         text: section
                         color: theme.mutedForeground
-                        font.pixelSize: 10
+                        font.pixelSize: theme.fsCaption
                         font.bold: true
                         font.capitalization: Font.AllUppercase
                         font.letterSpacing: 1
@@ -291,7 +291,7 @@ Rectangle {
                         text: row.modelData.name
                         color: theme.foreground
                         opacity: row.current ? 1 : 0.82
-                        font.pixelSize: 13
+                        font.pixelSize: theme.fsBodyLarge
                         font.bold: row.current
                         elide: Text.ElideRight
                     }
@@ -311,7 +311,7 @@ Rectangle {
                       ? qsTr("No leagues match “%1”").arg(sidebar.query)
                       : qsTr("No leagues selected")
                 color: theme.mutedForeground
-                font.pixelSize: 12
+                font.pixelSize: theme.fsBody
             }
         }
     }

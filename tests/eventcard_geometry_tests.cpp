@@ -18,6 +18,22 @@ class StubTheme : public QObject {
     Q_PROPERTY(QString mutedForeground MEMBER m_mutedForeground CONSTANT)
     Q_PROPERTY(QString selection MEMBER m_selection CONSTANT)
     Q_PROPERTY(QString monoFamily MEMBER m_monoFamily CONSTANT)
+    Q_PROPERTY(qreal fontScale MEMBER m_fontScale NOTIFY fontScaleChanged)
+    Q_PROPERTY(int scoreColumnWidth READ scoreColumnWidth NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsTiny READ fsTiny NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsCaption READ fsCaption NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsSmall READ fsSmall NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsBody READ fsBody NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsBodyLarge READ fsBodyLarge NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsName READ fsName NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsNameLarge READ fsNameLarge NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsSubtitle READ fsSubtitle NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsSubtitleLarge READ fsSubtitleLarge NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsScore READ fsScore NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsTitle READ fsTitle NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsHero READ fsHero NOTIFY fontScaleChanged)
+    Q_PROPERTY(int fsDisplay READ fsDisplay NOTIFY fontScaleChanged)
+
 public:
     int m_radius = 8;
     QString m_card = "#1a1a1f";
@@ -26,6 +42,34 @@ public:
     QString m_mutedForeground = "#888888";
     QString m_selection = "#2a2a31";
     QString m_monoFamily = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+    qreal m_fontScale = 1.0;
+
+    int scaled(int base) const { return qRound(base * m_fontScale); }
+    int scoreColumnWidth() const { return scaled(60); }
+    int fsTiny() const { return scaled(9); }
+    int fsCaption() const { return scaled(10); }
+    int fsSmall() const { return scaled(11); }
+    int fsBody() const { return scaled(12); }
+    int fsBodyLarge() const { return scaled(13); }
+    int fsName() const { return scaled(14); }
+    int fsNameLarge() const { return scaled(15); }
+    int fsSubtitle() const { return scaled(16); }
+    int fsSubtitleLarge() const { return scaled(17); }
+    int fsScore() const { return scaled(20); }
+    int fsTitle() const { return scaled(26); }
+    int fsHero() const { return scaled(30); }
+    int fsDisplay() const { return scaled(40); }
+
+    void setScale(qreal scale)
+    {
+        if (qFuzzyCompare(m_fontScale, scale))
+            return;
+        m_fontScale = scale;
+        emit fontScaleChanged();
+    }
+
+signals:
+    void fontScaleChanged();
 };
 
 class StubBackend : public QObject {
@@ -145,239 +189,277 @@ private:
         QCoreApplication::processEvents();
     }
 
-    void saveAsymmetricSnapshot(QQuickView &view);
+    void saveSnapshot(QQuickView &view, const QString &path);
 
 private slots:
     void scoreGeometryIsStable();
     void asymmetricScoreGeometry();
     void threeDigitScoresAlignRightEdge();
+    void controlSnapshots();
 };
 
-void EventCardGeometryTests::saveAsymmetricSnapshot(QQuickView &view)
+void EventCardGeometryTests::saveSnapshot(QQuickView &view, const QString &path)
 {
     if (!view.isVisible())
         return;
     const QImage image = view.grabWindow();
     if (image.isNull())
         return;
-    image.save(QStringLiteral("/tmp/omas-card-asym.png"));
+    image.save(path);
 }
 
 void EventCardGeometryTests::scoreGeometryIsStable()
 {
-    StubTheme theme;
-    StubBackend backend;
-    StubTranslator translator;
+    for (qreal scale : {0.9, 1.0, 1.2}) {
+        StubTheme theme;
+        theme.setScale(scale);
+        StubBackend backend;
+        StubTranslator translator;
 
-    const QVariantList noGoals;
-    const QVariantList goals = QVariantList{
-        QVariantMap{{"clock", "12'"}, {"scorer", "Scorer"}, {"teamAbbreviation", "HOM"},
-                    {"ownGoal", false}, {"penalty", false}, {"type", "Goal"}}};
-    const QVariantMap base = model("Home FC", "Away FC", "", "", noGoals);
+        const QVariantList noGoals;
+        const QVariantList goals = QVariantList{
+            QVariantMap{{"clock", "12'"}, {"scorer", "Scorer"}, {"teamAbbreviation", "HOM"},
+                        {"ownGoal", false}, {"penalty", false}, {"type", "Goal"}}};
+        const QVariantMap base = model("Home FC", "Away FC", "", "", noGoals);
 
-    QQuickView view;
-    view.engine()->rootContext()->setContextProperty("theme", &theme);
-    view.engine()->rootContext()->setContextProperty("backend", &backend);
-    view.engine()->rootContext()->setContextProperty("translator", &translator);
-    view.setResizeMode(QQuickView::SizeViewToRootObject);
-    view.setInitialProperties({{"modelData", base}, {"width", 420}});
-    view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
-    QVERIFY2(view.status() == QQuickView::Ready,
-             qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
-                                                : view.errors().first().toString()));
+        QQuickView view;
+        view.engine()->rootContext()->setContextProperty("theme", &theme);
+        view.engine()->rootContext()->setContextProperty("backend", &backend);
+        view.engine()->rootContext()->setContextProperty("translator", &translator);
+        view.setResizeMode(QQuickView::SizeViewToRootObject);
+        view.setInitialProperties({{"modelData", base}, {"width", 420}});
+        view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
+        QVERIFY2(view.status() == QQuickView::Ready,
+                 qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
+                                                    : view.errors().first().toString()));
 
-    auto *root = view.rootObject();
-    QVERIFY(root);
-    view.show();
-    settle(view);
-    const QList<RowGeom> baseRows = measure(root);
-    QCOMPARE(baseRows.size(), 2);
-
-    const QString crest = QStringLiteral("qrc:/crest.png");
-
-    const QList<QVariantMap> configs = {
-        model("Home FC", "Away FC", "3-1-5", "", noGoals), // avec/sans record
-        model("Home FC", "Away FC", "", crest, noGoals),    // avec/sans badge/logo
-        model("A very very very long team name that must elide",
-              "Another extremely long visiting team name", "", "", noGoals),
-        model("Home FC", "Away FC", "", "", goals), // présence de buteurs
-    };
-
-    for (int c = 0; c < configs.size(); ++c) {
-        root->setProperty("modelData", configs.at(c));
+        auto *root = view.rootObject();
+        QVERIFY(root);
+        view.show();
         settle(view);
-        const QList<RowGeom> rows = measure(root);
-        QCOMPARE(rows.size(), 2);
-        for (int i = 0; i < rows.size(); ++i) {
-            QVERIFY2(qAbs(rows.at(i).scoreX - baseRows.at(i).scoreX) <= 1.0,
-                     qPrintable(QString("config %1 row %2 scoreX %3 vs %4")
-                                    .arg(c).arg(i).arg(rows.at(i).scoreX)
-                                    .arg(baseRows.at(i).scoreX)));
-            QVERIFY2(qAbs(rows.at(i).scoreBaselineY - rows.at(i).nameBaselineY) <= 1.0,
-                     qPrintable(QString("config %1 row %2 scoreBaselineY %3 vs nameBaselineY %4")
-                                    .arg(c).arg(i).arg(rows.at(i).scoreBaselineY)
-                                    .arg(rows.at(i).nameBaselineY)));
-        }
-        if (c == 1) {
-            int readyBadges = 0;
-            QObject *repeater = nullptr;
-            for (auto *o : root->findChildren<QObject *>()) {
-                if (QString(o->metaObject()->className()).contains("Repeater")) {
-                    repeater = o;
-                    break;
-                }
+        const QList<RowGeom> baseRows = measure(root);
+        QCOMPARE(baseRows.size(), 2);
+
+        const QString crest = QStringLiteral("qrc:/crest.png");
+
+        const QList<QVariantMap> configs = {
+            model("Home FC", "Away FC", "3-1-5", "", noGoals),
+            model("Home FC", "Away FC", "", crest, noGoals),
+            model("A very very very long team name that must elide",
+                  "Another extremely long visiting team name", "", "", noGoals),
+            model("Home FC", "Away FC", "", "", goals),
+        };
+
+        for (int c = 0; c < configs.size(); ++c) {
+            root->setProperty("modelData", configs.at(c));
+            settle(view);
+            const QList<RowGeom> rows = measure(root);
+            QCOMPARE(rows.size(), 2);
+            for (int i = 0; i < rows.size(); ++i) {
+                QVERIFY2(qAbs(rows.at(i).scoreX - baseRows.at(i).scoreX) <= 1.0,
+                         qPrintable(QString("scale %1 config %2 row %3 scoreX %4 vs %5")
+                                        .arg(scale).arg(c).arg(i).arg(rows.at(i).scoreX)
+                                        .arg(baseRows.at(i).scoreX)));
+                QVERIFY2(qAbs(rows.at(i).scoreBaselineY - rows.at(i).nameBaselineY) <= 1.0,
+                         qPrintable(QString("scale %1 config %2 row %3 scoreBaselineY %4 vs nameBaselineY %5")
+                                        .arg(scale).arg(c).arg(i).arg(rows.at(i).scoreBaselineY)
+                                        .arg(rows.at(i).nameBaselineY)));
             }
-            QVERIFY(repeater);
-            for (int attempt = 0; attempt < 40 && readyBadges < 2; ++attempt) {
-                readyBadges = 0;
-                const int count = repeater->property("count").toInt();
-                for (int i = 0; i < count; ++i) {
-                    QQuickItem *item = nullptr;
-                    QMetaObject::invokeMethod(repeater, "itemAt", Q_RETURN_ARG(QQuickItem *, item),
-                                              Q_ARG(int, i));
-                    if (!item)
-                        continue;
-                    for (auto *obj : item->findChildren<QObject *>()) {
-                        const QVariant srcVar = obj->property("source");
-                        if (!srcVar.isValid())
-                            continue;
-                        auto *img = qobject_cast<QQuickItem *>(obj);
-                        if (srcVar.toString() == crest && img && img->width() > 0
-                            && obj->property("status").toInt() == 1)
-                            ++readyBadges;
+            if (c == 1) {
+                int readyBadges = 0;
+                QObject *repeater = nullptr;
+                for (auto *o : root->findChildren<QObject *>()) {
+                    if (QString(o->metaObject()->className()).contains("Repeater")) {
+                        repeater = o;
+                        break;
                     }
                 }
-                if (readyBadges < 2) {
-                    QCoreApplication::processEvents();
-                    QTest::qWait(25);
+                QVERIFY(repeater);
+                for (int attempt = 0; attempt < 40 && readyBadges < 2; ++attempt) {
+                    readyBadges = 0;
+                    const int count = repeater->property("count").toInt();
+                    for (int i = 0; i < count; ++i) {
+                        QQuickItem *item = nullptr;
+                        QMetaObject::invokeMethod(repeater, "itemAt", Q_RETURN_ARG(QQuickItem *, item),
+                                                  Q_ARG(int, i));
+                        if (!item)
+                            continue;
+                        for (auto *obj : item->findChildren<QObject *>()) {
+                            const QVariant srcVar = obj->property("source");
+                            if (!srcVar.isValid())
+                                continue;
+                            auto *img = qobject_cast<QQuickItem *>(obj);
+                            if (srcVar.toString() == crest && img && img->width() > 0
+                                && obj->property("status").toInt() == 1)
+                                ++readyBadges;
+                        }
+                    }
+                    if (readyBadges < 2) {
+                        QCoreApplication::processEvents();
+                        QTest::qWait(25);
+                    }
                 }
+                QVERIFY2(readyBadges >= 2,
+                         qPrintable(QString("scale %1 expected 2 rendered badges, got %2").arg(scale).arg(readyBadges)));
             }
-            QVERIFY2(readyBadges >= 2,
-                     qPrintable(QString("expected 2 rendered badges, got %1").arg(readyBadges)));
         }
     }
 }
 
 void EventCardGeometryTests::asymmetricScoreGeometry()
 {
-    StubTheme theme;
-    StubBackend backend;
-    StubTranslator translator;
+    for (qreal scale : {0.9, 1.0, 1.2}) {
+        StubTheme theme;
+        theme.setScale(scale);
+        StubBackend backend;
+        StubTranslator translator;
 
-    const QVariantList noGoals;
-    const QVariantList goals = QVariantList{
-        QVariantMap{{"clock", "12'"}, {"scorer", "Scorer"}, {"teamAbbreviation", "HOM"},
-                    {"ownGoal", false}, {"penalty", false}, {"type", "Goal"}}};
+        const QVariantList noGoals;
+        const QVariantList goals = QVariantList{
+            QVariantMap{{"clock", "12'"}, {"scorer", "Scorer"}, {"teamAbbreviation", "HOM"},
+                        {"ownGoal", false}, {"penalty", false}, {"type", "Goal"}}};
 
-    // Reproduction fidèle : ligne 2 seule avec record (430 px).
-    const QVariantMap base = model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "", "4-3-3",
-                                   QString(), noGoals);
+        const QVariantMap base = model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "", "4-3-3",
+                                       QString(), noGoals);
 
-    QQuickView view;
-    view.engine()->rootContext()->setContextProperty("theme", &theme);
-    view.engine()->rootContext()->setContextProperty("backend", &backend);
-    view.engine()->rootContext()->setContextProperty("translator", &translator);
-    view.setResizeMode(QQuickView::SizeViewToRootObject);
-    view.setInitialProperties({{"modelData", base}, {"width", 430}});
-    view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
-    QVERIFY2(view.status() == QQuickView::Ready,
-             qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
-                                                : view.errors().first().toString()));
+        QQuickView view;
+        view.engine()->rootContext()->setContextProperty("theme", &theme);
+        view.engine()->rootContext()->setContextProperty("backend", &backend);
+        view.engine()->rootContext()->setContextProperty("translator", &translator);
+        view.setResizeMode(QQuickView::SizeViewToRootObject);
+        view.setInitialProperties({{"modelData", base}, {"width", 430}});
+        view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
+        QVERIFY2(view.status() == QQuickView::Ready,
+                 qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
+                                                    : view.errors().first().toString()));
 
-    auto *root = view.rootObject();
-    QVERIFY(root);
-    view.show();
-    settle(view);
-
-    // Écrit à chaque exécution (cas « record sur une seule ligne »), sans échec si impossible.
-    saveAsymmetricSnapshot(view);
-
-    const QList<QPair<QString, QVariantMap>> configs = {
-        {"record sur la ligne 2 seulement", base},
-        {"record sur la ligne 1 seulement",
-         model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "4-3-3", "", QString(), noGoals)},
-        {"hauteurs différentes (buteurs) et record asymétrique",
-         model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "", "4-3-3", QString(), goals)},
-        {"hauteurs différentes (buteurs) et record sur la ligne 1",
-         model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "4-3-3", "", QString(), goals)},
-    };
-
-    for (const auto &cfg : configs) {
-        root->setProperty("modelData", cfg.second);
+        auto *root = view.rootObject();
+        QVERIFY(root);
+        view.show();
         settle(view);
-        const QList<RowGeom> rows = measure(root);
-        QCOMPARE(rows.size(), 2);
 
-        const qreal rel0 = rows.at(0).scoreBaselineY - rows.at(0).nameBaselineY;
-        const qreal rel1 = rows.at(1).scoreBaselineY - rows.at(1).nameBaselineY;
+        if (qFuzzyCompare(scale, 1.0))
+            saveSnapshot(view, QStringLiteral("/tmp/omas-card-asym.png"));
 
-        for (int i = 0; i < rows.size(); ++i) {
-            const qreal delta = rows.at(i).scoreBaselineY - rows.at(i).nameBaselineY;
-            QVERIFY2(qAbs(delta) <= 1.0,
-                     qPrintable(QString("%1: ligne %2 scoreBaselineY=%3 nameBaselineY=%4 (delta=%5)")
-                                    .arg(cfg.first)
-                                    .arg(i)
-                                    .arg(rows.at(i).scoreBaselineY)
-                                    .arg(rows.at(i).nameBaselineY)
-                                    .arg(delta)));
+        const QList<QPair<QString, QVariantMap>> configs = {
+            {"record sur la ligne 2 seulement", base},
+            {"record sur la ligne 1 seulement",
+             model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "4-3-3", "", QString(), noGoals)},
+            {"hauteurs différentes (buteurs) et record asymétrique",
+             model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "", "4-3-3", QString(), goals)},
+            {"hauteurs différentes (buteurs) et record sur la ligne 1",
+             model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "4-3-3", "", QString(), goals)},
+        };
+
+        for (const auto &cfg : configs) {
+            root->setProperty("modelData", cfg.second);
+            settle(view);
+            const QList<RowGeom> rows = measure(root);
+            QCOMPARE(rows.size(), 2);
+
+            const qreal rel0 = rows.at(0).scoreBaselineY - rows.at(0).nameBaselineY;
+            const qreal rel1 = rows.at(1).scoreBaselineY - rows.at(1).nameBaselineY;
+
+            for (int i = 0; i < rows.size(); ++i) {
+                const qreal delta = rows.at(i).scoreBaselineY - rows.at(i).nameBaselineY;
+                QVERIFY2(qAbs(delta) <= 1.0,
+                         qPrintable(QString("scale %1 %2: ligne %3 scoreBaselineY=%4 nameBaselineY=%5 (delta=%6)")
+                                        .arg(scale).arg(cfg.first).arg(i)
+                                        .arg(rows.at(i).scoreBaselineY)
+                                        .arg(rows.at(i).nameBaselineY)
+                                        .arg(delta)));
+            }
+
+            QVERIFY2(qAbs(rel0 - rel1) <= 1.0,
+                     qPrintable(QString("scale %1 %2: delta relatif ligne0=%3 ligne1=%4 (ecart=%5)")
+                                    .arg(scale).arg(cfg.first)
+                                    .arg(rel0).arg(rel1).arg(rel0 - rel1)));
         }
-
-        QVERIFY2(qAbs(rel0 - rel1) <= 1.0,
-                 qPrintable(QString("%1: delta relatif ligne0=%2 ligne1=%3 (ecart=%4)")
-                                .arg(cfg.first)
-                                .arg(rel0)
-                                .arg(rel1)
-                                .arg(rel0 - rel1)));
     }
 }
 
 void EventCardGeometryTests::threeDigitScoresAlignRightEdge()
 {
-    StubTheme theme;
-    StubBackend backend;
-    StubTranslator translator;
+    for (qreal scale : {0.9, 1.0, 1.2}) {
+        StubTheme theme;
+        theme.setScale(scale);
+        StubBackend backend;
+        StubTranslator translator;
 
-    const QVariantList noGoals;
-    const QVariantMap base = model("Home FC", "Away FC", "", "", "2", "1", QString(), noGoals);
+        const QVariantList noGoals;
+        const QVariantMap base = model("Home FC", "Away FC", "", "", "2", "1", QString(), noGoals);
 
-    QQuickView view;
-    view.engine()->rootContext()->setContextProperty("theme", &theme);
-    view.engine()->rootContext()->setContextProperty("backend", &backend);
-    view.engine()->rootContext()->setContextProperty("translator", &translator);
-    view.setResizeMode(QQuickView::SizeViewToRootObject);
-    view.setInitialProperties({{"modelData", base}, {"width", 420}});
-    view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
-    QVERIFY2(view.status() == QQuickView::Ready,
-             qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
-                                                : view.errors().first().toString()));
+        QQuickView view;
+        view.engine()->rootContext()->setContextProperty("theme", &theme);
+        view.engine()->rootContext()->setContextProperty("backend", &backend);
+        view.engine()->rootContext()->setContextProperty("translator", &translator);
+        view.setResizeMode(QQuickView::SizeViewToRootObject);
+        view.setInitialProperties({{"modelData", base}, {"width", 420}});
+        view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
+        QVERIFY2(view.status() == QQuickView::Ready,
+                 qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
+                                                    : view.errors().first().toString()));
 
-    auto *root = view.rootObject();
-    QVERIFY(root);
-    view.show();
-    settle(view);
-    const QList<RowGeom> baseRows = measure(root);
-    QCOMPARE(baseRows.size(), 2);
+        auto *root = view.rootObject();
+        QVERIFY(root);
+        view.show();
+        settle(view);
+        const QList<RowGeom> baseRows = measure(root);
+        QCOMPARE(baseRows.size(), 2);
 
-    root->setProperty("modelData",
-                      model("Home FC", "Away FC", "", "", "10", "123", QString(), noGoals));
-    settle(view);
-    const QList<RowGeom> rows = measure(root);
-    QCOMPARE(rows.size(), 2);
+        root->setProperty("modelData",
+                          model("Home FC", "Away FC", "", "", "10", "123", QString(), noGoals));
+        settle(view);
+        const QList<RowGeom> rows = measure(root);
+        QCOMPARE(rows.size(), 2);
 
-    const qreal right0 = rows.at(0).scoreX + rows.at(0).scoreWidth;
-    const qreal right1 = rows.at(1).scoreX + rows.at(1).scoreWidth;
-    QVERIFY2(qAbs(right0 - right1) <= 1.0,
-             qPrintable(QStringLiteral("right edges %1 vs %2").arg(right0).arg(right1)));
+        const qreal right0 = rows.at(0).scoreX + rows.at(0).scoreWidth;
+        const qreal right1 = rows.at(1).scoreX + rows.at(1).scoreWidth;
+        QVERIFY2(qAbs(right0 - right1) <= 1.0,
+                 qPrintable(QStringLiteral("scale %1 right edges %2 vs %3").arg(scale).arg(right0).arg(right1)));
 
-    for (int i = 0; i < rows.size(); ++i) {
-        QVERIFY2(qAbs(rows.at(i).scoreWidth - baseRows.at(i).scoreWidth) <= 1.0,
-                 qPrintable(QStringLiteral("row %1 width %2 vs %3")
-                                .arg(i)
-                                .arg(rows.at(i).scoreWidth)
-                                .arg(baseRows.at(i).scoreWidth)));
+        for (int i = 0; i < rows.size(); ++i) {
+            QVERIFY2(qAbs(rows.at(i).scoreWidth - baseRows.at(i).scoreWidth) <= 1.0,
+                     qPrintable(QStringLiteral("scale %1 row %2 width %3 vs %4")
+                                    .arg(scale)
+                                    .arg(i)
+                                    .arg(rows.at(i).scoreWidth)
+                                    .arg(baseRows.at(i).scoreWidth)));
+        }
     }
+}
 
-    saveAsymmetricSnapshot(view);
+void EventCardGeometryTests::controlSnapshots()
+{
+    const QList<QPair<qreal, QString>> scales = {
+        {0.9, QStringLiteral("/tmp/omas-card-compact.png")},
+        {1.0, QStringLiteral("/tmp/omas-card-normal.png")},
+        {1.2, QStringLiteral("/tmp/omas-card-large.png")},
+    };
+    for (const auto &entry : scales) {
+        StubTheme theme;
+        theme.setScale(entry.first);
+        StubBackend backend;
+        StubTranslator translator;
+
+        const QVariantList goals = QVariantList{
+            QVariantMap{{"clock", "12'"}, {"scorer", "Scorer"}, {"teamAbbreviation", "HOM"},
+                        {"ownGoal", false}, {"penalty", false}, {"type", "Goal"}}};
+        const QVariantMap sample = model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "",
+                                         "4-3-3", "10", "123", QString(), goals);
+
+        QQuickView view;
+        view.engine()->rootContext()->setContextProperty("theme", &theme);
+        view.engine()->rootContext()->setContextProperty("backend", &backend);
+        view.engine()->rootContext()->setContextProperty("translator", &translator);
+        view.setResizeMode(QQuickView::SizeViewToRootObject);
+        view.setInitialProperties({{"modelData", sample}, {"width", 430}});
+        view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
+        QVERIFY(view.status() == QQuickView::Ready);
+        view.show();
+        settle(view);
+        saveSnapshot(view, entry.second);
+    }
 }
 
 int main(int argc, char **argv)

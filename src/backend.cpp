@@ -277,10 +277,13 @@ Backend::Backend(const QString &settingsPath, bool online, QObject *parent)
 
     m_standingsHeaders = standingsHeadersFor(this->league().value("sport").toString());
 
+    m_fontScaleLevel = qBound(0, settings.value("ui/fontScale", 1).toInt(), 2);
+
     // Persist the normalized list, including an empty one, so "none" survives
     // the next launch instead of falling back to every league.
     settings.setValue("leagues/enabled", enabledLeagues());
     settings.setValue("leagues/known", allLeagueKeys());
+    settings.setValue("ui/fontScale", m_fontScaleLevel);
 }
 
 QVariantMap Backend::league() const
@@ -351,6 +354,29 @@ QStringList Backend::enabledLeagues() const
             keys.append(key);
     }
     return keys;
+}
+
+qreal Backend::fontScale() const
+{
+    switch (m_fontScaleLevel) {
+    case 0:
+        return 0.9;
+    case 2:
+        return 1.2;
+    default:
+        return 1.0;
+    }
+}
+
+void Backend::setFontScale(int level)
+{
+    level = qBound(0, level, 2);
+    if (level == m_fontScaleLevel)
+        return;
+    m_fontScaleLevel = level;
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    settings.setValue("ui/fontScale", m_fontScaleLevel);
+    emit fontScaleChanged();
 }
 
 void Backend::selectLeague(int index)

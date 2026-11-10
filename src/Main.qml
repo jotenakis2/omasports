@@ -187,7 +187,7 @@ ApplicationWindow {
                 Text {
                     text: "omasports"
                     color: theme.foreground
-                    font.pixelSize: 15
+                    font.pixelSize: theme.fsNameLarge
                     font.bold: true
                     font.letterSpacing: 0.2
                 }
@@ -207,7 +207,7 @@ ApplicationWindow {
                         Layout.preferredWidth: 152
                         text: backend.dateLabel
                         color: theme.foreground
-                        font.pixelSize: 13
+                        font.pixelSize: theme.fsBodyLarge
                         font.bold: true
                         horizontalAlignment: Text.AlignHCenter
                     }
@@ -259,7 +259,7 @@ ApplicationWindow {
                     Text {
                         text: qsTr("%n live", "", backend.liveCount)
                         color: theme.accent
-                        font.pixelSize: 12
+                        font.pixelSize: theme.fsBody
                         font.bold: true
                     }
                 }
@@ -306,7 +306,7 @@ ApplicationWindow {
                                   : win.noLeagues ? qsTr("Leagues")
                                   : backend.league.name || ""
                             color: theme.foreground
-                            font.pixelSize: 26
+                            font.pixelSize: theme.fsTitle
                             font.bold: true
                             elide: Text.ElideRight
                         }
@@ -327,7 +327,7 @@ ApplicationWindow {
                                        : backend.league.sportName
                             }
                             color: theme.mutedForeground
-                            font.pixelSize: 12
+                            font.pixelSize: theme.fsBody
                             elide: Text.ElideRight
                         }
                     }
@@ -356,7 +356,7 @@ ApplicationWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             text: qsTr("Refresh failed: %1").arg(backend.error)
                             color: theme.danger
-                            font.pixelSize: 11
+                            font.pixelSize: theme.fsSmall
                             elide: Text.ElideRight
                         }
                     }
@@ -407,7 +407,7 @@ ApplicationWindow {
                                     anchors.bottomMargin: 4
                                     text: section
                                     color: theme.mutedForeground
-                                    font.pixelSize: 10
+                                    font.pixelSize: theme.fsCaption
                                     font.bold: true
                                     font.capitalization: Font.AllUppercase
                                     font.letterSpacing: 1
@@ -436,7 +436,7 @@ ApplicationWindow {
                                 text: backend.liveMode ? qsTr("Scanning every league…")
                                                        : qsTr("Loading scores…")
                                 color: theme.mutedForeground
-                                font.pixelSize: 12
+                                font.pixelSize: theme.fsBody
                             }
                         }
 
@@ -451,7 +451,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 text: qsTr("Could not load scores")
                                 color: theme.foreground
-                                font.pixelSize: 16
+                                font.pixelSize: theme.fsSubtitle
                                 font.bold: true
                                 horizontalAlignment: Text.AlignHCenter
                             }
@@ -460,7 +460,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 text: backend.error
                                 color: theme.mutedForeground
-                                font.pixelSize: 11
+                                font.pixelSize: theme.fsSmall
                                 wrapMode: Text.WordWrap
                                 horizontalAlignment: Text.AlignHCenter
                             }
@@ -483,14 +483,14 @@ ApplicationWindow {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: "—"
                                 color: theme.mutedForeground
-                                font.pixelSize: 40
+                                font.pixelSize: theme.fsDisplay
                             }
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: qsTr("No games on this day.")
                                 color: theme.mutedForeground
-                                font.pixelSize: 14
+                                font.pixelSize: theme.fsName
                             }
 
                             ActionButton {
@@ -512,14 +512,14 @@ ApplicationWindow {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: "—"
                                 color: theme.mutedForeground
-                                font.pixelSize: 40
+                                font.pixelSize: theme.fsDisplay
                             }
 
                             Text {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: qsTr("No games in progress right now.")
                                 color: theme.mutedForeground
-                                font.pixelSize: 14
+                                font.pixelSize: theme.fsName
                             }
 
                             ActionButton {
@@ -545,7 +545,7 @@ ApplicationWindow {
                                 Layout.alignment: Qt.AlignHCenter
                                 text: qsTr("No leagues selected")
                                 color: theme.foreground
-                                font.pixelSize: 16
+                                font.pixelSize: theme.fsSubtitle
                                 font.bold: true
                             }
 
@@ -553,7 +553,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 text: qsTr("Choose the leagues you want to follow.")
                                 color: theme.mutedForeground
-                                font.pixelSize: 12
+                                font.pixelSize: theme.fsBody
                                 wrapMode: Text.WordWrap
                                 horizontalAlignment: Text.AlignHCenter
                             }
@@ -591,37 +591,37 @@ ApplicationWindow {
                 Text {
                     text: qsTr("? Help")
                     color: theme.mutedForeground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
-                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
                     text: qsTr("J / K league")
                     color: theme.mutedForeground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
-                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
                     text: qsTr("H / L day")
                     color: theme.mutedForeground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
-                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
                     text: qsTr("D live")
                     color: theme.mutedForeground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
-                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
                     text: qsTr("C standings")
                     color: theme.mutedForeground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
-                Text { text: "·"; color: theme.line; font.pixelSize: 11 }
+                Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
                     text: qsTr("S leagues")
                     color: theme.mutedForeground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
 
                 Item { Layout.fillWidth: true }
@@ -630,14 +630,14 @@ ApplicationWindow {
                     visible: backend.status === "ready" && backend.updatedLabel.length > 0
                     text: qsTr("Updated at %1").arg(backend.updatedLabel)
                     color: theme.mutedForeground
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
 
                 Text {
                     text: "ESPN"
                     color: theme.mutedForeground
                     opacity: 0.65
-                    font.pixelSize: 11
+                    font.pixelSize: theme.fsSmall
                 }
             }
         }

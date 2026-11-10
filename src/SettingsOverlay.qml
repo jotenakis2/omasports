@@ -50,7 +50,7 @@ Item {
                     Layout.fillWidth: true
                     text: qsTr("Sports and leagues")
                     color: theme.foreground
-                    font.pixelSize: 17
+                    font.pixelSize: theme.fsSubtitleLarge
                     font.bold: true
                 }
             }
@@ -59,7 +59,7 @@ Item {
                 Layout.fillWidth: true
                 text: qsTr("Choose the leagues you want to follow.")
                 color: theme.mutedForeground
-                font.pixelSize: 11
+                font.pixelSize: theme.fsSmall
                 wrapMode: Text.WordWrap
             }
 
@@ -141,7 +141,7 @@ Item {
                                 visible: choiceRow.checked || choiceRow.partial
                                 text: choiceRow.partial ? "–" : "✓"
                                 color: choiceRow.checked ? theme.accentForeground : theme.accent
-                                font.pixelSize: 11
+                                font.pixelSize: theme.fsSmall
                                 font.bold: true
                             }
                         }
@@ -150,7 +150,7 @@ Item {
                             Layout.fillWidth: true
                             text: choiceRow.modelData.name
                             color: theme.foreground
-                            font.pixelSize: choiceRow.sport ? 11 : 13
+                            font.pixelSize: choiceRow.sport ? theme.fsSmall : theme.fsBodyLarge
                             font.bold: choiceRow.sport
                             font.capitalization: choiceRow.sport
                                                  ? Font.AllUppercase : Font.MixedCase
@@ -162,7 +162,7 @@ Item {
                             visible: choiceRow.sport
                             text: qsTr("%n leagues", "", Number(choiceRow.modelData.leagues))
                             color: theme.mutedForeground
-                            font.pixelSize: 10
+                            font.pixelSize: theme.fsCaption
                         }
                     }
 
@@ -179,6 +179,49 @@ Item {
                             }
                         }
                     }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: theme.line
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    text: qsTr("Text size")
+                    color: theme.mutedForeground
+                    font.pixelSize: theme.fsSmall
+                    font.bold: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ActionButton {
+                        text: qsTr("Compact")
+                        primary: backend.fontScaleLevel === 0
+                        onClicked: backend.setFontScale(0)
+                    }
+
+                    ActionButton {
+                        text: qsTr("Normal")
+                        primary: backend.fontScaleLevel === 1
+                        onClicked: backend.setFontScale(1)
+                    }
+
+                    ActionButton {
+                        text: qsTr("Large")
+                        primary: backend.fontScaleLevel === 2
+                        onClicked: backend.setFontScale(2)
+                    }
+
+                    Item { Layout.fillWidth: true }
                 }
             }
 

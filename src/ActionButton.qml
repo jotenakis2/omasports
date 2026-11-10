@@ -21,7 +21,7 @@ Rectangle {
         anchors.centerIn: parent
         text: control.text
         color: control.primary ? theme.accentForeground : theme.foreground
-        font.pixelSize: 12
+        font.pixelSize: theme.fsBody
         font.bold: control.primary
     }
 

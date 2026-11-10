@@ -59,7 +59,7 @@ Item {
                     Layout.fillWidth: true
                     text: qsTr("Keyboard shortcuts")
                     color: theme.foreground
-                    font.pixelSize: 17
+                    font.pixelSize: theme.fsSubtitleLarge
                     font.bold: true
                 }
             }
@@ -79,7 +79,7 @@ Item {
                         Layout.preferredWidth: 100
                         text: modelData.keys
                         color: theme.accent
-                        font.pixelSize: 12
+                        font.pixelSize: theme.fsBody
                         font.bold: true
                     }
 
@@ -88,7 +88,7 @@ Item {
                         text: modelData.action
                         color: theme.foreground
                         opacity: 0.82
-                        font.pixelSize: 12
+                        font.pixelSize: theme.fsBody
                     }
                 }
             }
@@ -104,7 +104,7 @@ Item {
             Text {
                 text: qsTr("Scores from ESPN")
                 color: theme.mutedForeground
-                font.pixelSize: 10
+                font.pixelSize: theme.fsCaption
             }
         }
     }

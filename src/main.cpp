@@ -32,6 +32,10 @@ int main(int argc, char *argv[])
     Theme theme;
     Backend backend;
 
+    theme.setFontScale(backend.fontScale());
+    QObject::connect(&backend, &Backend::fontScaleChanged, &theme,
+                     [&theme, &backend] { theme.setFontScale(backend.fontScale()); });
+
     QQmlApplicationEngine engine;
     QObject::connect(&translator, &Translator::changed, &engine, &QQmlEngine::retranslate);
     // Sport names come from C++, so the catalog is rebuilt on a language
