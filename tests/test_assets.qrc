@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>crest.png</file>
+    </qresource>
+</RCC>

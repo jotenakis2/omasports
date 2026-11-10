@@ -7,4 +7,4 @@ INCLUDEPATH += ../src
 DEFINES += SRCDIR=\\\"$$PWD\\\"
 
 SOURCES += eventcard_geometry_tests.cpp
-RESOURCES += ../src/resources.qrc
+RESOURCES += ../src/resources.qrc test_assets.qrc

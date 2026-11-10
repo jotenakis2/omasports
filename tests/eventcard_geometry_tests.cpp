@@ -156,9 +156,11 @@ void EventCardGeometryTests::scoreGeometryIsStable()
     const QList<RowGeom> baseRows = measure(root);
     QCOMPARE(baseRows.size(), 2);
 
+    const QString crest = QStringLiteral("qrc:/crest.png");
+
     const QList<QVariantMap> configs = {
         model("Home FC", "Away FC", "3-1-5", "", noGoals), // avec/sans record
-        model("Home FC", "Away FC", "", "crest.png", noGoals), // avec/sans badge/logo
+        model("Home FC", "Away FC", "", crest, noGoals),    // avec/sans badge/logo
         model("A very very very long team name that must elide",
               "Another extremely long visiting team name", "", "", noGoals),
         model("Home FC", "Away FC", "", "", goals), // présence de buteurs
@@ -178,6 +180,43 @@ void EventCardGeometryTests::scoreGeometryIsStable()
                      qPrintable(QString("config %1 row %2 scoreY %3 vs nameY %4")
                                     .arg(c).arg(i).arg(rows.at(i).scoreY)
                                     .arg(rows.at(i).nameY)));
+        }
+        if (c == 1) {
+            int readyBadges = 0;
+            QObject *repeater = nullptr;
+            for (auto *o : root->findChildren<QObject *>()) {
+                if (QString(o->metaObject()->className()).contains("Repeater")) {
+                    repeater = o;
+                    break;
+                }
+            }
+            QVERIFY(repeater);
+            for (int attempt = 0; attempt < 40 && readyBadges < 2; ++attempt) {
+                readyBadges = 0;
+                const int count = repeater->property("count").toInt();
+                for (int i = 0; i < count; ++i) {
+                    QQuickItem *item = nullptr;
+                    QMetaObject::invokeMethod(repeater, "itemAt", Q_RETURN_ARG(QQuickItem *, item),
+                                              Q_ARG(int, i));
+                    if (!item)
+                        continue;
+                    for (auto *obj : item->findChildren<QObject *>()) {
+                        const QVariant srcVar = obj->property("source");
+                        if (!srcVar.isValid())
+                            continue;
+                        auto *img = qobject_cast<QQuickItem *>(obj);
+                        if (srcVar.toString() == crest && img && img->width() > 0
+                            && obj->property("status").toInt() == 1)
+                            ++readyBadges;
+                    }
+                }
+                if (readyBadges < 2) {
+                    QCoreApplication::processEvents();
+                    QTest::qWait(25);
+                }
+            }
+            QVERIFY2(readyBadges >= 2,
+                     qPrintable(QString("expected 2 rendered badges, got %1").arg(readyBadges)));
         }
     }
 }
