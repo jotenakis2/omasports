@@ -124,13 +124,21 @@ QString scoreString(const QJsonValue &score)
     return {};
 }
 
-void orderAwayFirst(QVariantList *teams)
+void orderHomeFirst(QVariantList *teams)
 {
     if (teams->size() != 2)
         return;
     const QVariantMap first = teams->first().toMap();
     const QVariantMap second = teams->last().toMap();
-    if (first.value("home").toBool() && !second.value("home").toBool()) {
+    const QString firstSide = first.value("homeAway").toString();
+    const QString secondSide = second.value("homeAway").toString();
+    const bool firstHome = firstSide == QLatin1String("home");
+    const bool firstAway = firstSide == QLatin1String("away");
+    const bool secondHome = secondSide == QLatin1String("home");
+    const bool secondAway = secondSide == QLatin1String("away");
+    if (!(firstHome || firstAway) || !(secondHome || secondAway))
+        return; // information de camp absente : ordre du flux conservé
+    if (firstAway && secondHome) {
         teams->clear();
         teams->append(second);
         teams->append(first);
@@ -1463,9 +1471,9 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
             teams.append(item);
         }
 
-        // ESPN lists the home side first in most feeds; the card reads away
-        // then home, like a scoreboard.
-        orderAwayFirst(&teams);
+        // Convention football : domicile en premier, extérieur ensuite quand
+        // l'information de camp est connue. Sans camp, l'ordre du flux est conservé.
+        orderHomeFirst(&teams);
 
         QHash<QString, QString> abbreviations;
         for (const auto &teamValue : teams) {

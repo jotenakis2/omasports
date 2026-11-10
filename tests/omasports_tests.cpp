@@ -275,18 +275,78 @@ private slots:
         QCOMPARE(event.value("venue").toString(), QStringLiteral("Footprint Center"));
         QCOMPARE(event.value("teams").toList().size(), 2);
 
-        const QVariantMap away = event.value("teams").toList().first().toMap();
-        const QVariantMap home = event.value("teams").toList().last().toMap();
-        // The home side comes first in the feed; the card wants away first.
+        const QVariantList teams = event.value("teams").toList();
+        // Le domicile est affiché en premier, l'extérieur ensuite.
+        const QVariantMap home = teams.first().toMap();
+        const QVariantMap away = teams.last().toMap();
+        QCOMPARE(home.value("name").toString(), QStringLiteral("Phoenix Suns"));
+        QCOMPARE(home.value("score").toString(), QStringLiteral("58"));
+        QVERIFY(home.value("winner").toBool());
         QCOMPARE(away.value("name").toString(), QStringLiteral("Orlando Magic"));
         QCOMPARE(away.value("score").toString(), QStringLiteral("56"));
         QCOMPARE(away.value("record").toString(), QStringLiteral("3-4"));
         QCOMPARE(away.value("logo").toString(), QStringLiteral("orl.png"));
-        QCOMPARE(home.value("name").toString(), QStringLiteral("Phoenix Suns"));
-        QCOMPARE(home.value("score").toString(), QStringLiteral("58"));
-        QVERIFY(home.value("winner").toBool());
 
         QCOMPARE(Backend::liveCountOf(events), 1);
+    }
+
+    void parseScoreboardKeepsHomeAwayOrderWhenKnown()
+    {
+        // Domicile en tête dans le flux : l'ordre reste domicile puis extérieur.
+        const char *homeFirst = R"({
+          "events": [{
+            "id": "h", "name": "A v B", "date": "2026-11-06T20:00Z",
+            "status": {"type": {"state": "pre", "detail": "20:00", "shortDetail": "20:00", "completed": false}},
+            "competitions": [{"competitors": [
+              {"homeAway": "home", "score": "0", "team": {"displayName": "Home FC"}},
+              {"homeAway": "away", "score": "0", "team": {"displayName": "Away FC"}}
+            ]}]
+          }]
+        })";
+        QString error;
+        QVariantList events = Backend::parseScoreboard(homeFirst, &error);
+        QVERIFY(error.isEmpty());
+        QVariantList teams = events.first().toMap().value("teams").toList();
+        QCOMPARE(teams.first().toMap().value("name").toString(), QStringLiteral("Home FC"));
+        QCOMPARE(teams.last().toMap().value("name").toString(), QStringLiteral("Away FC"));
+
+        // Extérieur en tête dans le flux : on remet domicile puis extérieur.
+        const char *awayFirst = R"({
+          "events": [{
+            "id": "a", "name": "B v A", "date": "2026-11-06T20:00Z",
+            "status": {"type": {"state": "pre", "detail": "20:00", "shortDetail": "20:00", "completed": false}},
+            "competitions": [{"competitors": [
+              {"homeAway": "away", "score": "0", "team": {"displayName": "Away FC"}},
+              {"homeAway": "home", "score": "0", "team": {"displayName": "Home FC"}}
+            ]}]
+          }]
+        })";
+        events = Backend::parseScoreboard(awayFirst, &error);
+        QVERIFY(error.isEmpty());
+        teams = events.first().toMap().value("teams").toList();
+        QCOMPARE(teams.first().toMap().value("name").toString(), QStringLiteral("Home FC"));
+        QCOMPARE(teams.last().toMap().value("name").toString(), QStringLiteral("Away FC"));
+    }
+
+    void parseScoreboardKeepsFeedOrderWithoutHomeAway()
+    {
+        // Sans notion de camp (tournoi, course, etc.) l'ordre du flux est conservé.
+        const char *noCamps = R"({
+          "events": [{
+            "id": "t", "name": "Race", "date": "2026-11-06T12:00Z",
+            "status": {"type": {"state": "post", "detail": "Final", "shortDetail": "Final", "completed": true}},
+            "competitions": [{"competitors": [
+              {"score": "1", "athlete": {"displayName": "Alpha"}},
+              {"score": "2", "athlete": {"displayName": "Beta"}}
+            ]}]
+          }]
+        })";
+        QString error;
+        const QVariantList events = Backend::parseScoreboard(noCamps, &error);
+        QVERIFY(error.isEmpty());
+        const QVariantList teams = events.first().toMap().value("teams").toList();
+        QCOMPARE(teams.first().toMap().value("name").toString(), QStringLiteral("Alpha"));
+        QCOMPARE(teams.last().toMap().value("name").toString(), QStringLiteral("Beta"));
     }
 
     void parseScoreboardKeepsTournamentEvents()
@@ -437,9 +497,10 @@ private slots:
         const QVariantMap event = events.first().toMap();
         const QVariantList teams = event.value("teams").toList();
         QCOMPARE(teams.size(), 2);
-        QCOMPARE(teams.first().toMap().value("id").toString(), QStringLiteral("180"));
+        // Domicile (Toulouse) en premier, extérieur (Strasbourg) ensuite.
+        QCOMPARE(teams.first().toMap().value("id").toString(), QStringLiteral("179"));
         QCOMPARE(teams.first().toMap().value("abbreviation").toString(),
-                 QStringLiteral("STR"));
+                 QStringLiteral("TLS"));
 
         const QVariantList goals = event.value("goals").toList();
         QCOMPARE(goals.size(), 4);
