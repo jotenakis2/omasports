@@ -1,6 +1,9 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFont>
+#include <QFontDatabase>
+#include <QFontMetricsF>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
@@ -243,10 +246,10 @@ private slots:
         // Le score occupe une largeur fixe, aligné à droite sur la ligne du nom
         // (même rangée que le nom), indépendant du record/badge/nom long.
         QVERIFY(qml.contains("objectName: \"scoreText\""));
-        QVERIFY(qml.contains("Layout.preferredWidth: 46"));
+        QVERIFY(qml.contains("Layout.preferredWidth: 60"));
         QVERIFY(qml.contains("Layout.alignment: Qt.AlignBaseline | Qt.AlignRight"));
         QVERIFY(qml.contains("elide: Text.ElideNone"));
-        QVERIFY(qml.contains("maximumLineCount: 1"));
+        QVERIFY(qml.contains("font.family: theme.monoFamily"));
         // Le score partage la rangée du nom ; le record est rendu sous cette rangée.
         QVERIFY(qml.contains("RowLayout {\n                                Layout.fillWidth: true\n                                spacing: 9\n\n                                Text {\n                                    objectName: \"nameText\""));
     }
@@ -1218,6 +1221,26 @@ private slots:
         QCOMPARE(theme.radius(), 0);
         writeFile(response, "{\"int\":6}");
         QTRY_COMPARE(theme.radius(), 6);
+    }
+
+    void themeExposesSystemMonospaceFamily()
+    {
+        QTemporaryDir dir;
+        Theme theme(dir.path());
+        const QString expected = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
+        QVERIFY(!theme.monoFamily().isEmpty());
+        QCOMPARE(theme.monoFamily(), expected.isEmpty() ? QStringLiteral("monospace") : expected);
+
+        QFont font(theme.monoFamily(), 20);
+        font.setBold(true);
+        const QFontMetricsF metrics(font);
+        const qreal w1 = metrics.horizontalAdvance(QStringLiteral("1"));
+        const qreal w3 = metrics.horizontalAdvance(QStringLiteral("3"));
+        const qreal w0 = metrics.horizontalAdvance(QStringLiteral("0"));
+        QVERIFY2(qAbs(w1 - w3) <= 0.5,
+                 qPrintable(QStringLiteral("1=%1 3=%2 delta=%3").arg(w1).arg(w3).arg(w1 - w3)));
+        QVERIFY2(qAbs(w1 - w0) <= 0.5,
+                 qPrintable(QStringLiteral("1=%1 0=%2 delta=%3").arg(w1).arg(w0).arg(w1 - w0)));
     }
 
     void translatorFallsBackToEnglish()

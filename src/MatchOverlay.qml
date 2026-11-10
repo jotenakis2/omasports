@@ -165,6 +165,7 @@ Item {
                             return home + " – " + away
                         }
                         color: theme.foreground
+                        font.family: theme.monoFamily
                         font.pixelSize: 30
                         font.bold: true
                     }

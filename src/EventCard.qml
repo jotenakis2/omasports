@@ -132,11 +132,12 @@ Rectangle {
 
                                 Text {
                                     objectName: "scoreText"
-                                    Layout.preferredWidth: 46
+                                    Layout.preferredWidth: 60
                                     Layout.alignment: Qt.AlignBaseline | Qt.AlignRight
                                     horizontalAlignment: Text.AlignRight
                                     text: card.modelData.state === "pre" ? "" : modelData.score
                                     color: modelData.winner ? theme.accent : theme.foreground
+                                    font.family: theme.monoFamily
                                     font.pixelSize: 20
                                     font.bold: true
                                     elide: Text.ElideNone

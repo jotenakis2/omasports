@@ -5,6 +5,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFontDatabase>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QRegularExpression>
@@ -13,7 +14,10 @@
 
 Theme::Theme(const QString &directory, QObject *parent, const QString &hyprctl)
     : QObject(parent),
-      m_directory(directory.isEmpty() ? QDir::homePath() + "/.local/state/omarchy/current" : directory) {
+      m_directory(directory.isEmpty() ? QDir::homePath() + "/.local/state/omarchy/current" : directory),
+      m_monoFamily(QFontDatabase::systemFont(QFontDatabase::FixedFont).family()) {
+    if (m_monoFamily.isEmpty())
+        m_monoFamily = QStringLiteral("monospace");
     m_debounce.setSingleShot(true);
     m_debounce.setInterval(80);
     connect(&m_watcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_debounce.start(); });

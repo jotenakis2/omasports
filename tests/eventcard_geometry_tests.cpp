@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QImage>
 #include <QQmlContext>
@@ -16,6 +17,7 @@ class StubTheme : public QObject {
     Q_PROPERTY(QString accent MEMBER m_accent CONSTANT)
     Q_PROPERTY(QString mutedForeground MEMBER m_mutedForeground CONSTANT)
     Q_PROPERTY(QString selection MEMBER m_selection CONSTANT)
+    Q_PROPERTY(QString monoFamily MEMBER m_monoFamily CONSTANT)
 public:
     int m_radius = 8;
     QString m_card = "#1a1a1f";
@@ -23,6 +25,7 @@ public:
     QString m_accent = "#FFD60A";
     QString m_mutedForeground = "#888888";
     QString m_selection = "#2a2a31";
+    QString m_monoFamily = QFontDatabase::systemFont(QFontDatabase::FixedFont).family();
 };
 
 class StubBackend : public QObject {
@@ -62,7 +65,8 @@ private:
     }
 
     QVariantMap model(const QString &homeName, const QString &awayName, const QString &homeRecord,
-                      const QString &awayRecord, const QString &logo, const QVariantList &goals) const
+                      const QString &awayRecord, const QString &homeScore, const QString &awayScore,
+                      const QString &logo, const QVariantList &goals) const
     {
         return {{"name", homeName + " v " + awayName},
                 {"state", "post"},
@@ -72,8 +76,14 @@ private:
                 {"sport", "soccer"},
                 {"venue", "Stadium"},
                 {"goals", goals},
-                {"teams", QVariantList{team(homeName, "2", homeRecord, logo),
-                                       team(awayName, "1", awayRecord, logo)}}};
+                {"teams", QVariantList{team(homeName, homeScore, homeRecord, logo),
+                                       team(awayName, awayScore, awayRecord, logo)}}};
+    }
+
+    QVariantMap model(const QString &homeName, const QString &awayName, const QString &homeRecord,
+                      const QString &awayRecord, const QString &logo, const QVariantList &goals) const
+    {
+        return model(homeName, awayName, homeRecord, awayRecord, "2", "1", logo, goals);
     }
 
     QVariantMap model(const QString &homeName, const QString &awayName, const QString &record,
@@ -85,6 +95,7 @@ private:
     struct RowGeom {
         qreal scoreX = -1;
         qreal scoreY = -1;
+        qreal scoreWidth = -1;
         qreal nameY = -1;
         qreal scoreBaselineY = -1;
         qreal nameBaselineY = -1;
@@ -116,6 +127,7 @@ private:
             RowGeom row;
             row.scoreX = scores.first()->mapToItem(card, 0, 0).x();
             row.scoreY = scores.first()->mapToItem(card, 0, 0).y();
+            row.scoreWidth = scores.first()->width();
             row.nameY = names.first()->mapToItem(card, 0, 0).y();
             row.scoreBaselineY = row.scoreY + scores.first()->property("baselineOffset").toReal();
             row.nameBaselineY = row.nameY + names.first()->property("baselineOffset").toReal();
@@ -138,6 +150,7 @@ private:
 private slots:
     void scoreGeometryIsStable();
     void asymmetricScoreGeometry();
+    void threeDigitScoresAlignRightEdge();
 };
 
 void EventCardGeometryTests::saveAsymmetricSnapshot(QQuickView &view)
@@ -316,6 +329,55 @@ void EventCardGeometryTests::asymmetricScoreGeometry()
                                 .arg(rel1)
                                 .arg(rel0 - rel1)));
     }
+}
+
+void EventCardGeometryTests::threeDigitScoresAlignRightEdge()
+{
+    StubTheme theme;
+    StubBackend backend;
+    StubTranslator translator;
+
+    const QVariantList noGoals;
+    const QVariantMap base = model("Home FC", "Away FC", "", "", "2", "1", QString(), noGoals);
+
+    QQuickView view;
+    view.engine()->rootContext()->setContextProperty("theme", &theme);
+    view.engine()->rootContext()->setContextProperty("backend", &backend);
+    view.engine()->rootContext()->setContextProperty("translator", &translator);
+    view.setResizeMode(QQuickView::SizeViewToRootObject);
+    view.setInitialProperties({{"modelData", base}, {"width", 420}});
+    view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
+    QVERIFY2(view.status() == QQuickView::Ready,
+             qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
+                                                : view.errors().first().toString()));
+
+    auto *root = view.rootObject();
+    QVERIFY(root);
+    view.show();
+    settle(view);
+    const QList<RowGeom> baseRows = measure(root);
+    QCOMPARE(baseRows.size(), 2);
+
+    root->setProperty("modelData",
+                      model("Home FC", "Away FC", "", "", "10", "123", QString(), noGoals));
+    settle(view);
+    const QList<RowGeom> rows = measure(root);
+    QCOMPARE(rows.size(), 2);
+
+    const qreal right0 = rows.at(0).scoreX + rows.at(0).scoreWidth;
+    const qreal right1 = rows.at(1).scoreX + rows.at(1).scoreWidth;
+    QVERIFY2(qAbs(right0 - right1) <= 1.0,
+             qPrintable(QStringLiteral("right edges %1 vs %2").arg(right0).arg(right1)));
+
+    for (int i = 0; i < rows.size(); ++i) {
+        QVERIFY2(qAbs(rows.at(i).scoreWidth - baseRows.at(i).scoreWidth) <= 1.0,
+                 qPrintable(QStringLiteral("row %1 width %2 vs %3")
+                                .arg(i)
+                                .arg(rows.at(i).scoreWidth)
+                                .arg(baseRows.at(i).scoreWidth)));
+    }
+
+    saveAsymmetricSnapshot(view);
 }
 
 int main(int argc, char **argv)

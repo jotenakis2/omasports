@@ -23,6 +23,7 @@ class Theme : public QObject {
     Q_PROPERTY(QString danger READ danger NOTIFY changed)
     Q_PROPERTY(bool dark READ dark NOTIFY changed)
     Q_PROPERTY(int radius READ radius NOTIFY changed)
+    Q_PROPERTY(QString monoFamily READ monoFamily CONSTANT)
 
 public:
     explicit Theme(const QString &currentDirectory = {}, QObject *parent = nullptr,
@@ -41,6 +42,7 @@ public:
     QString danger() const { return m_danger; }
     bool dark() const { return m_dark; }
     int radius() const { return m_radius; }
+    QString monoFamily() const { return m_monoFamily; }
 
     // Every `key = "#rrggbb"` line of an Omarchy theme's colors.toml.
     static QHash<QString, QString> readPalette(const QString &path);
@@ -64,6 +66,7 @@ private:
     QFileSystemWatcher m_watcher;
     QTimer m_debounce;
     QString m_hyprctl;
+    QString m_monoFamily = "monospace";
     int m_radius = 0;
     QProcess m_roundingProcess;
     QTimer m_roundingPoll, m_roundingTimeout;
