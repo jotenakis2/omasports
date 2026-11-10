@@ -96,9 +96,10 @@ public:
     Q_INVOKABLE void retranslate();
 
     static QVariantList leagueCatalog();
-    static QVariantList parseScoreboard(const QByteArray &payload, QString *error = nullptr);
+    static QVariantList parseScoreboard(const QByteArray &payload, QString *error = nullptr,
+                                         const QString &sport = {}, const QString &league = {});
     static QVariantList parseStandings(const QByteArray &payload, const QString &sport,
-                                       QString *error = nullptr);
+                                       QString *error = nullptr, const QString &league = {});
     static QVariantMap parseMatchSummary(const QByteArray &payload, const QVariantMap &event,
                                          QString *error = nullptr);
     static QVariantList liveEventsFrom(const QVariantList &scoreboardEvents, const QString &sport,
@@ -119,7 +120,8 @@ public:
     // réseau : les tests fournissent des charges enregistrées.
     static QVariantMap chooseStandingsSeason(const QString &sport, const QList<int> &candidates,
                                              const QMap<int, QByteArray> &payloads,
-                                             bool scoreboardSeasonInProgress);
+                                             bool scoreboardSeasonInProgress,
+                                             const QString &league = {});
 
 signals:
     void statusChanged();

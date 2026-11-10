@@ -91,13 +91,37 @@ QStringList allLeagueKeys()
     return keys;
 }
 
-QString teamLogo(const QJsonObject &team)
+bool allowsCountryLogos(const QString &sport, const QString &league)
 {
-    const QString logo = team.value("logo").toString();
+    if (sport == QLatin1String("rugby")
+        && (league == QLatin1String("180659") || league == QLatin1String("164205"))) {
+        return true;
+    }
+    if (sport == QLatin1String("cricket") && league == QLatin1String("8039"))
+        return true;
+    return false;
+}
+
+QString teamLogo(const QJsonObject &team, bool allowCountryLogos)
+{
+    auto pick = [&allowCountryLogos](const QString &logo) -> QString {
+        if (logo.isEmpty())
+            return {};
+        if (!allowCountryLogos && logo.contains(QStringLiteral("/teamlogos/countries/")))
+            return {};
+        return logo;
+    };
+
+    const QString logo = pick(team.value("logo").toString());
     if (!logo.isEmpty())
         return logo;
     const auto logos = team.value("logos").toArray();
-    return logos.isEmpty() ? QString() : logos.first().toObject().value("href").toString();
+    for (const auto &entry : logos) {
+        const QString candidate = pick(entry.toObject().value("href").toString());
+        if (!candidate.isEmpty())
+            return candidate;
+    }
+    return {};
 }
 
 int uniformMatchesPlayed(const QVariantList &groups)
@@ -743,7 +767,7 @@ void Backend::refresh()
 
     QNetworkReply *reply = m_network.get(request);
     m_pending = reply;
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, league] {
         if (reply != m_pending)
             return;
         m_pending.clear();
@@ -760,7 +784,9 @@ void Backend::refresh()
         }
 
         QString parseError;
-        const QVariantList events = parseScoreboard(payload, &parseError);
+        const QVariantList events = parseScoreboard(payload, &parseError,
+                                                    league.value("sport").toString(),
+                                                    league.value("league").toString());
         if (!parseError.isEmpty()) {
             m_status = "error";
             m_error = parseError;
@@ -864,7 +890,7 @@ void Backend::startLiveRequests()
                     m_liveError = networkError;
             } else {
                 QString parseError;
-                const QVariantList events = parseScoreboard(payload, &parseError);
+                const QVariantList events = parseScoreboard(payload, &parseError, task.sport, task.league);
                 if (!parseError.isEmpty()) {
                     ++m_liveFailures;
                     if (m_liveError.isEmpty())
@@ -990,7 +1016,7 @@ void Backend::fetchStandings()
         *tryNext = [this, sport, leagueSlug, seasonInProgress, state, tryNext]() {
             if (state->index >= state->candidates.size()) {
                 const QVariantMap chosen = chooseStandingsSeason(
-                    sport, state->candidates, state->payloads, seasonInProgress);
+                    sport, state->candidates, state->payloads, seasonInProgress, leagueSlug);
                 m_standings = chosen.value("groups").toList();
                 m_standingsHeaders = standingsHeadersFor(sport);
                 m_standingsSeasonUncertain = chosen.value("uncertain", true).toBool();
@@ -1011,7 +1037,7 @@ void Backend::fetchStandings()
 
             QNetworkReply *reply = m_network.get(request);
             m_pending = reply;
-            connect(reply, &QNetworkReply::finished, this, [this, sport, seasonInProgress, state, tryNext, season, reply] {
+            connect(reply, &QNetworkReply::finished, this, [this, sport, leagueSlug, seasonInProgress, state, tryNext, season, reply] {
                 if (reply != m_pending)
                     return;
                 m_pending.clear();
@@ -1024,7 +1050,7 @@ void Backend::fetchStandings()
                     state->payloads.insert(season, payload);
 
                 const QVariantMap chosen = chooseStandingsSeason(
-                    sport, state->candidates, state->payloads, seasonInProgress);
+                    sport, state->candidates, state->payloads, seasonInProgress, leagueSlug);
                 if (!chosen.value("uncertain", true).toBool()) {
                     m_standings = chosen.value("groups").toList();
                     m_standingsHeaders = standingsHeadersFor(sport);
@@ -1452,7 +1478,8 @@ QUrl Backend::standingsUrl(const QString &sport, const QString &league, const QD
 
 QVariantMap Backend::chooseStandingsSeason(const QString &sport, const QList<int> &candidates,
                                            const QMap<int, QByteArray> &payloads,
-                                           bool scoreboardSeasonInProgress)
+                                           bool scoreboardSeasonInProgress,
+                                           const QString &league)
 {
     QVariantMap chosen;
     chosen.insert("season", candidates.isEmpty() ? 0 : candidates.first());
@@ -1463,7 +1490,7 @@ QVariantMap Backend::chooseStandingsSeason(const QString &sport, const QList<int
         if (!payloads.contains(season))
             continue;
         QString error;
-        const QVariantList groups = parseStandings(payloads.value(season), sport, &error);
+        const QVariantList groups = parseStandings(payloads.value(season), sport, &error, league);
         if (!error.isEmpty())
             continue;
 
@@ -1489,7 +1516,7 @@ QVariantMap Backend::chooseStandingsSeason(const QString &sport, const QList<int
         if (!payloads.contains(season))
             continue;
         QString error;
-        const QVariantList groups = parseStandings(payloads.value(season), sport, &error);
+        const QVariantList groups = parseStandings(payloads.value(season), sport, &error, league);
         if (error.isEmpty()) {
             chosen.insert("season", season);
             chosen.insert("groups", groups);
@@ -1502,7 +1529,7 @@ QVariantMap Backend::chooseStandingsSeason(const QString &sport, const QList<int
 }
 
 QVariantList Backend::parseStandings(const QByteArray &payload, const QString &sport,
-                                          QString *error)
+                                          QString *error, const QString &league)
 {
     if (error)
         error->clear();
@@ -1526,6 +1553,7 @@ QVariantList Backend::parseStandings(const QByteArray &payload, const QString &s
     }
 
     const bool singleGroup = groups.size() == 1;
+    const bool allowCountries = allowsCountryLogos(sport, league);
     QVariantList result;
     for (const auto &groupValue : groups) {
         const QJsonObject group = groupValue.toObject();
@@ -1598,7 +1626,7 @@ QVariantList Backend::parseStandings(const QByteArray &payload, const QString &s
             QVariantMap teamMap;
             teamMap.insert("name", team.value("displayName").toString());
             teamMap.insert("abbreviation", team.value("abbreviation").toString());
-            teamMap.insert("logo", teamLogo(team));
+            teamMap.insert("logo", teamLogo(team, allowCountries));
             teamMap.insert("color", team.value("color").toString());
 
             int gamesPlayed = int(numeric("gamesPlayed"));
@@ -1668,7 +1696,8 @@ QVariantList Backend::liveEventsFrom(const QVariantList &scoreboardEvents, const
     return live;
 }
 
-QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
+QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error,
+                                         const QString &sport, const QString &league)
 {
     if (error)
         error->clear();
@@ -1682,6 +1711,8 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
                        : parseError.errorString();
         return {};
     }
+
+    const bool allowCountries = allowsCountryLogos(sport, league);
 
     QVariantList events;
     for (const auto &entry : document.object().value("events").toArray()) {
@@ -1724,7 +1755,7 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error)
             item.insert("name", name);
             item.insert("shortName", shortName);
             item.insert("abbreviation", team.value("abbreviation").toString());
-            item.insert("logo", teamLogo(team));
+            item.insert("logo", teamLogo(team, allowCountries));
             item.insert("color", team.value("color").toString());
             item.insert("score", scoreString(competitor.value("score")));
             item.insert("winner", competitor.value("winner").toBool());

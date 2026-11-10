@@ -761,6 +761,63 @@ private slots:
         QCOMPARE(noDiff.value(5), QString()); // statistique absente : vide, jamais "0"
     }
 
+    void clubStandingsRejectCountryLogosButInternationalsKeepFlags()
+    {
+        const QByteArray top14 =
+            "{\"children\":[{\"name\":\"Top 14\",\"standings\":{\"entries\":["
+            "{\"team\":{\"id\":\"8\",\"displayName\":\"USA Perpignan\","
+            "\"abbreviation\":\"PERP\",\"color\":\"c8102e\","
+            "\"logo\":\"https://a.espncdn.com/i/teamlogos/countries/500/usa.png\"},"
+            "\"stats\":[{\"name\":\"rank\",\"value\":1,\"displayValue\":\"1\"},"
+            "{\"name\":\"gamesPlayed\",\"value\":9,\"displayValue\":\"9\"},"
+            "{\"name\":\"wins\",\"value\":3,\"displayValue\":\"3\"},"
+            "{\"name\":\"ties\",\"value\":0,\"displayValue\":\"0\"},"
+            "{\"name\":\"losses\",\"value\":6,\"displayValue\":\"6\"},"
+            "{\"name\":\"points\",\"value\":12,\"displayValue\":\"12\"},"
+            "{\"name\":\"pointsDifference\",\"value\":-20,\"displayValue\":\"-20\"}]},"
+            "{\"team\":{\"id\":\"9\",\"displayName\":\"RC Vannes\","
+            "\"abbreviation\":\"VAN\",\"color\":\"0055a4\","
+            "\"logo\":\"https://a.espncdn.com/i/teamlogos/countries/500/van.png\"},"
+            "\"stats\":[{\"name\":\"rank\",\"value\":2,\"displayValue\":\"2\"},"
+            "{\"name\":\"gamesPlayed\",\"value\":9,\"displayValue\":\"9\"},"
+            "{\"name\":\"wins\",\"value\":2,\"displayValue\":\"2\"},"
+            "{\"name\":\"ties\",\"value\":0,\"displayValue\":\"0\"},"
+            "{\"name\":\"losses\",\"value\":7,\"displayValue\":\"7\"},"
+            "{\"name\":\"points\",\"value\":8,\"displayValue\":\"8\"},"
+            "{\"name\":\"pointsDifference\",\"value\":-30,\"displayValue\":\"-30\"}]}"
+            "]}}]}";
+        QString error;
+        const QVariantList groups = Backend::parseStandings(top14, "rugby", &error,
+                                                           "270559");
+        QVERIFY(error.isEmpty());
+        const QVariantList rows = groups.first().toMap().value("rows").toList();
+        QCOMPARE(rows.size(), 2);
+        QCOMPARE(rows.at(0).toMap().value("team").toMap().value("logo").toString(),
+                 QString());
+        QCOMPARE(rows.at(1).toMap().value("team").toMap().value("logo").toString(),
+                 QString());
+
+        const QByteArray sixNations =
+            "{\"children\":[{\"name\":\"Six Nations\",\"standings\":{\"entries\":["
+            "{\"team\":{\"id\":\"10\",\"displayName\":\"France\","
+            "\"abbreviation\":\"FRA\",\"color\":\"0055a4\","
+            "\"logo\":\"https://a.espncdn.com/i/teamlogos/countries/500/fra.png\"},"
+            "\"stats\":[{\"name\":\"rank\",\"value\":1,\"displayValue\":\"1\"},"
+            "{\"name\":\"gamesPlayed\",\"value\":5,\"displayValue\":\"5\"},"
+            "{\"name\":\"wins\",\"value\":4,\"displayValue\":\"4\"},"
+            "{\"name\":\"ties\",\"value\":0,\"displayValue\":\"0\"},"
+            "{\"name\":\"losses\",\"value\":1,\"displayValue\":\"1\"},"
+            "{\"name\":\"points\",\"value\":20,\"displayValue\":\"20\"},"
+            "{\"name\":\"pointsDifference\",\"value\":45,\"displayValue\":\"+45\"}]}"
+            "]}}]}";
+        const QVariantList intlGroups = Backend::parseStandings(sixNations, "rugby", &error,
+                                                                "180659");
+        QVERIFY(error.isEmpty());
+        QCOMPARE(intlGroups.first().toMap().value("rows").toList().first().toMap()
+                     .value("team").toMap().value("logo").toString(),
+                 QStringLiteral("https://a.espncdn.com/i/teamlogos/countries/500/fra.png"));
+    }
+
     void standingsModeCoexistsWithLive()
     {
         QTemporaryDir dir;
