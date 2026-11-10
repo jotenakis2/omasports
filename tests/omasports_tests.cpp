@@ -231,6 +231,24 @@ class OmASportsTests : public QObject {
     Q_OBJECT
 
 private slots:
+    void eventCardScoreUsesDedicatedColumn()
+    {
+        QFile file(QStringLiteral(SRCDIR "/../src/EventCard.qml"));
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            file.setFileName(QStringLiteral("src/EventCard.qml"));
+        QVERIFY2(file.isOpen() || file.open(QIODevice::ReadOnly | QIODevice::Text),
+                 "cannot open EventCard.qml");
+        const QString qml = QString::fromUtf8(file.readAll());
+        // Le score doit être dans sa propre colonne, largeur fixe, aligné à droite
+        // sur la ligne du nom, indépendant du record/badge/nom long.
+        QVERIFY(qml.contains("Layout.preferredWidth: 46"));
+        QVERIFY(qml.contains("Layout.alignment: Qt.AlignTop | Qt.AlignRight"));
+        QVERIFY(qml.contains("elide: Text.ElideNone"));
+        QVERIFY(qml.contains("maximumLineCount: 1"));
+        // Le score n'est plus imbriqué dans la RowLayout du nom (ancienne structure).
+        QVERIFY(!qml.contains("Text {\n                                    Layout.preferredWidth: 46"));
+    }
+
     void catalogCoversEverySport()
     {
         const QVariantList catalog = Backend::leagueCatalog();

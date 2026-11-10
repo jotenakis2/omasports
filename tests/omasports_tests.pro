@@ -4,6 +4,7 @@ TARGET = omasports_tests
 TEMPLATE = app
 
 INCLUDEPATH += ../src
+DEFINES += SRCDIR=\\\"$$PWD\\\"
 
 HEADERS += ../src/backend.h ../src/theme.h ../src/translator.h
 SOURCES += omasports_tests.cpp ../src/backend.cpp ../src/theme.cpp ../src/translator.cpp
