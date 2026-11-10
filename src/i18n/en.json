@@ -15,5 +15,9 @@
     "one": "%n league",
     "other": "%n leagues"
   },
-  "Standings season is uncertain.": "Standings season is uncertain."
+  "Standings season is uncertain.": "Standings season is uncertain.",
+  "Text size": "Text size",
+  "Compact": "Compact",
+  "Normal": "Normal",
+  "Large": "Large"
 }

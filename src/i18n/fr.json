@@ -106,5 +106,9 @@
   "Match not started.": "Le match n'a pas encore commencé.",
   "No details yet.": "Pas encore de détail.",
   "Form: %1": "Forme : %1",
-  "Standings season is uncertain.": "Saison du classement incertaine."
+  "Standings season is uncertain.": "Saison du classement incertaine.",
+  "Text size": "Taille du texte",
+  "Compact": "Compact",
+  "Normal": "Normal",
+  "Large": "Grand"
 }
