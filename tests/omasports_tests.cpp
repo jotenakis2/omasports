@@ -498,7 +498,7 @@ private slots:
         QCOMPARE(Backend::standingsHeadersFor("soccer"),
                  QStringList({"Pts", "MP", "W", "D", "L", "GD"}));
         QCOMPARE(Backend::standingsHeadersFor("rugby"),
-                 QStringList({"Pts", "MP", "W", "D", "L"}));
+                 QStringList({"Pts", "MP", "W", "D", "L", "GD"}));
         QCOMPARE(Backend::standingsHeadersFor("hockey"),
                  QStringList({"Pts", "W", "L", "OTL"}));
         QCOMPARE(Backend::standingsHeadersFor("basketball"),
@@ -720,6 +720,45 @@ private slots:
                                       .toMap().value("cells").toStringList();
         QCOMPARE(cells.value(0), QStringLiteral("32"));
         QCOMPARE(cells.value(1), QStringLiteral("9"));
+    }
+
+    void rugbyStandingsShowPointsDifferenceFromRecordedTop14()
+    {
+        // Recorded Top 14 payload: pointsDifference provided, PD e.g. +68.
+        const QByteArray top14 =
+            "{\"children\":[{\"name\":\"Top 14 2026-27\",\"standings\":{\"entries\":["
+            "{\"team\":{\"id\":\"1\",\"displayName\":\"Stade Toulousain\","
+            "\"abbreviation\":\"ST\",\"color\":\"000000\","
+            "\"logo\":\"https://a.espncdn.com/i/teamlogos/rugby/500/1.png\"},"
+            "\"stats\":[{\"name\":\"rank\",\"value\":1,\"displayValue\":\"1\"},"
+            "{\"name\":\"gamesPlayed\",\"value\":9,\"displayValue\":\"9\"},"
+            "{\"name\":\"wins\",\"value\":7,\"displayValue\":\"7\"},"
+            "{\"name\":\"ties\",\"value\":0,\"displayValue\":\"0\"},"
+            "{\"name\":\"losses\",\"value\":2,\"displayValue\":\"2\"},"
+            "{\"name\":\"points\",\"value\":32,\"displayValue\":\"32\"},"
+            "{\"name\":\"pointsFor\",\"value\":245,\"displayValue\":\"245\"},"
+            "{\"name\":\"pointsAgainst\",\"value\":177,\"displayValue\":\"177\"},"
+            "{\"name\":\"pointsDifference\",\"value\":68,\"displayValue\":\"+68\"}]},"
+            "{\"team\":{\"id\":\"2\",\"displayName\":\"No Diff Club\","
+            "\"abbreviation\":\"NDC\",\"color\":\"111111\","
+            "\"logo\":\"https://a.espncdn.com/i/teamlogos/rugby/500/2.png\"},"
+            "\"stats\":[{\"name\":\"rank\",\"value\":2,\"displayValue\":\"2\"},"
+            "{\"name\":\"gamesPlayed\",\"value\":9,\"displayValue\":\"9\"},"
+            "{\"name\":\"wins\",\"value\":3,\"displayValue\":\"3\"},"
+            "{\"name\":\"ties\",\"value\":0,\"displayValue\":\"0\"},"
+            "{\"name\":\"losses\",\"value\":6,\"displayValue\":\"6\"},"
+            "{\"name\":\"points\",\"value\":14,\"displayValue\":\"14\"}]}]}}]}";
+        QString error;
+        const QVariantList groups = Backend::parseStandings(top14, "rugby", &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(Backend::standingsHeadersFor("rugby"),
+                 QStringList({"Pts", "MP", "W", "D", "L", "GD"}));
+        const QVariantList rows = groups.first().toMap().value("rows").toList();
+        QCOMPARE(rows.size(), 2);
+        const QStringList toulouse = rows.at(0).toMap().value("cells").toStringList();
+        QCOMPARE(toulouse, QStringList({"32", "9", "7", "0", "2", "+68"}));
+        const QStringList noDiff = rows.at(1).toMap().value("cells").toStringList();
+        QCOMPARE(noDiff.value(5), QString()); // statistique absente : vide, jamais "0"
     }
 
     void standingsModeCoexistsWithLive()

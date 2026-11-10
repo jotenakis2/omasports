@@ -1576,7 +1576,8 @@ QVariantList Backend::parseStandings(const QByteArray &payload, const QString &s
             } else if (sport == "rugby") {
                 cells << display({"points"}) << display({"gamesPlayed"})
                       << display({"wins", "gamesWon"})
-                      << display({"ties", "gamesDrawn"}) << display({"losses", "gamesLost"});
+                      << display({"ties", "gamesDrawn"}) << display({"losses", "gamesLost"})
+                      << display({"pointsDifference", "pointDifferential"});
             } else if (sport == "football") {
                 cells << display({"wins"}) << display({"losses"}) << display({"ties"})
                       << display({"winPercent"});
@@ -1637,7 +1638,7 @@ QStringList Backend::standingsHeadersFor(const QString &sport)
     if (sport == "soccer")
         return {tr("Pts"), tr("MP"), tr("W"), tr("D"), tr("L"), tr("GD")};
     if (sport == "rugby")
-        return {tr("Pts"), tr("MP"), tr("W"), tr("D"), tr("L")};
+        return {tr("Pts"), tr("MP"), tr("W"), tr("D"), tr("L"), tr("GD")};
     if (sport == "football")
         return {tr("W"), tr("L"), tr("T"), tr("Pct")};
     if (sport == "basketball" || sport == "baseball")
