@@ -1300,13 +1300,19 @@ private slots:
 
     void catalogsHaveTheSameKeys()
     {
-        QFile french(":/i18n/fr.json");
-        QVERIFY(french.open(QIODevice::ReadOnly));
-        const QJsonObject translations = QJsonDocument::fromJson(french.readAll()).object();
-        QVERIFY(translations.contains("Final"));
-        QVERIFY(translations.contains("No games on this day."));
-        QVERIFY(translations.contains("Soccer"));
-        QVERIFY(translations.value("%n games").isObject());
+        QFile frenchFile(":/i18n/fr.json");
+        QVERIFY(frenchFile.open(QIODevice::ReadOnly));
+        const QJsonObject french = QJsonDocument::fromJson(frenchFile.readAll()).object();
+
+        QFile englishFile(":/i18n/en.json");
+        QVERIFY(englishFile.open(QIODevice::ReadOnly));
+        const QJsonObject english = QJsonDocument::fromJson(englishFile.readAll()).object();
+
+        QCOMPARE(french.keys(), english.keys());
+        QVERIFY(french.contains("Final"));
+        QVERIFY(french.contains("No games on this day."));
+        QVERIFY(french.contains("Soccer"));
+        QVERIFY(french.value("%n games").isObject());
     }
 
     void fontScaleRolesAtNormal_data()
@@ -1416,6 +1422,136 @@ private slots:
             QCOMPARE(reopened.fontScaleLevel(), 2);
             QCOMPARE(reopened.fontScale(), 1.2);
         }
+    }
+
+    void upcomingScheduleFiltersSortsAndGroups()
+    {
+        const QByteArray month = R"({
+          "events": [
+            {"id":"past","date":"2026-11-10T10:00Z","status":{"type":{"state":"pre","shortDetail":"Sched"}},
+             "competitions":[{"status":{"type":{"state":"pre","shortDetail":"Sched"}},
+               "competitors":[{"homeAway":"home","team":{"id":"1","displayName":"Home A"}},{"homeAway":"away","team":{"id":"2","displayName":"Away A"}}],
+               "venue":{"fullName":"Stade A"}}]},
+            {"id":"d1a","date":"2026-11-20T18:00Z","status":{"type":{"state":"pre","shortDetail":"Sched"}},
+             "competitions":[{"status":{"type":{"state":"pre","shortDetail":"Sched"}},
+               "competitors":[{"homeAway":"home","team":{"id":"3","displayName":"Home B"}},{"homeAway":"away","team":{"id":"4","displayName":"Away B"}}],
+               "venue":{"fullName":"Stade B"}}]},
+            {"id":"d1b","date":"2026-11-20T20:30Z","status":{"type":{"state":"pre","shortDetail":"Sched"}},
+             "competitions":[{"status":{"type":{"state":"pre","shortDetail":"Sched"}},
+               "competitors":[{"homeAway":"home","team":{"id":"5","displayName":"Home C"}},{"homeAway":"away","team":{"id":"6","displayName":"Away C"}}]}]},
+            {"id":"d2","date":"2026-11-21T12:00Z","status":{"type":{"state":"pre","shortDetail":"Sched"}},
+             "competitions":[{"status":{"type":{"state":"pre","shortDetail":"Sched"}},
+               "competitors":[{"homeAway":"home","team":{"id":"7","displayName":"Home D"}},{"homeAway":"away","team":{"id":"8","displayName":"Away D"}}]}]},
+            {"id":"post","date":"2026-11-22T12:00Z","status":{"type":{"state":"post","shortDetail":"FT","completed":true}},
+             "competitions":[{"status":{"type":{"state":"post","shortDetail":"FT","completed":true}},
+               "competitors":[{"homeAway":"home","team":{"id":"9","displayName":"Home E"}},{"homeAway":"away","team":{"id":"10","displayName":"Away E"}}]}]},
+            {"id":"live","date":"2026-11-22T14:00Z","status":{"type":{"state":"in","shortDetail":"1H"}},
+             "competitions":[{"status":{"type":{"state":"in","shortDetail":"1H"}},
+               "competitors":[{"homeAway":"home","team":{"id":"11","displayName":"Home F"}},{"homeAway":"away","team":{"id":"12","displayName":"Away F"}}]}]}
+          ]
+        })";
+
+        QString error;
+        const QVariantList groups = Backend::parseUpcomingSchedule(month, "{}", QDate(2026, 11, 11), &error, "soccer", "fra.1");
+        QVERIFY(error.isEmpty());
+        QCOMPARE(groups.size(), 2);
+
+        const QVariantMap day1 = groups.at(0).toMap();
+        QCOMPARE(day1.value("dateIso").toString(), QStringLiteral("2026-11-20"));
+        QCOMPARE(day1.value("matches").toList().size(), 2);
+        QCOMPARE(day1.value("matches").toList().first().toMap().value("id").toString(), QStringLiteral("d1a"));
+        QCOMPARE(day1.value("matches").toList().last().toMap().value("id").toString(), QStringLiteral("d1b"));
+
+        const QVariantMap day2 = groups.at(1).toMap();
+        QCOMPARE(day2.value("dateIso").toString(), QStringLiteral("2026-11-21"));
+        QCOMPARE(day2.value("matches").toList().size(), 1);
+        QCOMPARE(day2.value("matches").toList().first().toMap().value("id").toString(), QStringLiteral("d2"));
+    }
+
+    void upcomingScheduleDeduplicatesAndCaps()
+    {
+        const QByteArray month = R"({
+          "events": [
+            {"id":"real","date":"2026-11-20T15:00Z","status":{"type":{"state":"pre","shortDetail":"Sched"}},
+             "competitions":[{"status":{"type":{"state":"pre","shortDetail":"Sched"}},
+               "competitors":[{"homeAway":"home","team":{"id":"1","displayName":"Team A"}},{"homeAway":"away","team":{"id":"2","displayName":"Team B"}}]}]},
+            {"id":"ghost","date":"2026-11-20T15:30Z","status":{"type":{"state":"pre","shortDetail":"Sched"}},
+             "competitions":[{"status":{"type":{"state":"pre","shortDetail":"Sched"}},
+               "competitors":[{"homeAway":"away","team":{"id":"1","displayName":"Team A"}},{"homeAway":"home","team":{"id":"2","displayName":"Team B"}}]}]}
+          ]
+        })";
+
+        QString error;
+        QVariantList groups = Backend::parseUpcomingSchedule(month, "{}", QDate(2026, 11, 1), &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(groups.size(), 1);
+        QCOMPARE(groups.first().toMap().value("matches").toList().size(), 1);
+        QCOMPARE(groups.first().toMap().value("matches").toList().first().toMap().value("id").toString(),
+                 QStringLiteral("real"));
+
+        QByteArray many = "{\"events\":[";
+        for (int i = 0; i < 205; ++i) {
+            if (i > 0) many += ',';
+            const int day = 1 + (i / 8);
+            const int hour = 8 + (i % 8);
+            many += QByteArray("{\"id\":\"m%1\",\"date\":\"2026-12-%2T%3:00Z\","
+                               "\"status\":{\"type\":{\"state\":\"pre\",\"shortDetail\":\"Sched\"}},"
+                               "\"competitions\":[{\"status\":{\"type\":{\"state\":\"pre\",\"shortDetail\":\"Sched\"}},"
+                               "\"competitors\":[{\"homeAway\":\"home\",\"team\":{\"id\":\"%4\",\"displayName\":\"H%1\"}},"
+                               "{\"homeAway\":\"away\",\"team\":{\"id\":\"%5\",\"displayName\":\"A%1\"}}]}]}")
+                        .replace("%1", QByteArray::number(i))
+                        .replace("%2", QByteArray::number(day).rightJustified(2, '0'))
+                        .replace("%3", QByteArray::number(hour).rightJustified(2, '0'))
+                        .replace("%4", QByteArray::number(1000 + i))
+                        .replace("%5", QByteArray::number(2000 + i));
+        }
+        many += "]}";
+        groups = Backend::parseUpcomingSchedule(many, "{}", QDate(2026, 12, 1), &error);
+        QVERIFY(error.isEmpty());
+        int total = 0;
+        for (const auto &groupValue : groups)
+            total += groupValue.toMap().value("matches").toList().size();
+        QCOMPARE(total, 200);
+        QCOMPARE(groups.first().toMap().value("matches").toList().first().toMap().value("id").toString(),
+                 QStringLiteral("m0"));
+    }
+
+    void upcomingCacheAvoidsRepeatedRequests()
+    {
+        QTemporaryDir dir;
+        Backend backend(dir.filePath("settings.ini"), false);
+        QCOMPARE(backend.upcomingRequestCount(), 0);
+
+        const QDate today = QDate::currentDate();
+        const QString currentMonth = today.toString("yyyyMM");
+        const QString nextMonth = today.addMonths(1).toString("yyyyMM");
+        const QVariantMap lg = backend.league();
+        const QString sport = lg.value("sport").toString();
+        const QString leagueSlug = lg.value("league").toString();
+
+        const QByteArray payload = QByteArray("{\"events\":[{\"id\":\"u1\",\"date\":\"")
+            + today.addDays(3).toString(Qt::ISODate).toUtf8() + "T12:00:00Z\","
+            + "\"status\":{\"type\":{\"state\":\"pre\",\"shortDetail\":\"Sched\"}},"
+              "\"competitions\":[{\"status\":{\"type\":{\"state\":\"pre\",\"shortDetail\":\"Sched\"}},"
+              "\"competitors\":[{\"homeAway\":\"home\",\"team\":{\"id\":\"1\",\"displayName\":\"Home\"}},"
+              "{\"homeAway\":\"away\",\"team\":{\"id\":\"2\",\"displayName\":\"Away\"}}]}]}]}";
+
+        backend.injectUpcomingMonthPayload(sport, leagueSlug, currentMonth, payload);
+        backend.injectUpcomingMonthPayload(sport, leagueSlug, nextMonth, "{\"events\":[]}");
+
+        backend.setUpcoming(true);
+        QCOMPARE(backend.upcomingRequestCount(), 2);
+        QVERIFY(!backend.upcoming().isEmpty());
+
+        backend.setUpcoming(false);
+        backend.setUpcoming(true);
+        QCOMPARE(backend.upcomingRequestCount(), 2);
+
+        backend.invalidateUpcomingCache();
+        backend.injectUpcomingMonthPayload(sport, leagueSlug, currentMonth, payload);
+        backend.injectUpcomingMonthPayload(sport, leagueSlug, nextMonth, "{\"events\":[]}");
+        backend.refreshUpcoming();
+        QCOMPARE(backend.upcomingRequestCount(), 4);
     }
 };
 
