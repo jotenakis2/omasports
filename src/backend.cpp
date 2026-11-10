@@ -920,8 +920,7 @@ void Backend::fetchStandings()
     m_error.clear();
     emit statusChanged();
 
-    const QUrl url(QStringLiteral("https://site.api.espn.com/apis/v2/sports/%1/%2/standings")
-                       .arg(sport, league.value("league").toString()));
+    const QUrl url = standingsUrl(sport, league.value("league").toString(), date());
     QNetworkRequest request(url);
     request.setTransferTimeout(15000);
     request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
@@ -1250,6 +1249,41 @@ QUrl Backend::scoreboardUrl(const QString &sport, const QString &league, const Q
     QUrlQuery query;
     // ESPN expects the day in its own format, and reads ?dates=YYYYMMDD.
     query.addQueryItem("dates", date.toString("yyyyMMdd"));
+    url.setQuery(query);
+    return url;
+}
+
+int Backend::standingsSeason(const QString &sport, const QDate &date)
+{
+    // Saison explicite par famille (ESPN renvoie sinon un classement périmé,
+    // ex. Top 14 : classement final de la saison précédente sans ?season=).
+    // Rugby : année de FIN de saison (2026-27 => 2027).
+    // Football (soccer) : année de DÉBUT de saison (2026-27 => 2026).
+    // NBA/NHL (basketball/hockey) : année de FIN de saison.
+    // Les autres sports à saisons chevauchantes suivent la fin de saison ;
+    // en cas de doute on privilégie l'année courante selon le même seuil.
+    const int year = date.year();
+    const int month = date.month();
+    if (sport == QLatin1String("soccer")) {
+        // Saison européenne typique août-mai : à partir de juillet on bascule
+        // sur la saison qui commence cette année-là.
+        return month >= 7 ? year : year - 1;
+    }
+    if (sport == QLatin1String("rugby") || sport == QLatin1String("basketball")
+        || sport == QLatin1String("hockey") || sport == QLatin1String("football")) {
+        // Saisons à cheval sur deux années civiles, identifiées par l'année de fin.
+        return month >= 7 ? year + 1 : year;
+    }
+    return year;
+}
+
+QUrl Backend::standingsUrl(const QString &sport, const QString &league, const QDate &date)
+{
+    QUrl url(QStringLiteral("https://site.api.espn.com/apis/v2/sports/%1/%2/standings")
+                 .arg(sport, league));
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("season"),
+                       QString::number(standingsSeason(sport, date)));
     url.setQuery(query);
     return url;
 }

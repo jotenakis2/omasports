@@ -105,6 +105,8 @@ public:
     static int liveCountOf(const QVariantList &events);
     static QStringList standingsHeadersFor(const QString &sport);
     static QUrl scoreboardUrl(const QString &sport, const QString &league, const QDate &date);
+    static int standingsSeason(const QString &sport, const QDate &date);
+    static QUrl standingsUrl(const QString &sport, const QString &league, const QDate &date);
 
 signals:
     void statusChanged();

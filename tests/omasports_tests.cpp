@@ -479,6 +479,23 @@ private slots:
                  QStringList({"6", "2", ".750", "-"}));
     }
 
+    void standingsSeasonFollowsSportFamily()
+    {
+        // Rugby : année de FIN de saison (2026-27 => 2027).
+        QCOMPARE(Backend::standingsSeason("rugby", QDate(2026, 11, 10)), 2027);
+        QCOMPARE(Backend::standingsSeason("rugby", QDate(2027, 5, 1)), 2027);
+        // Football (soccer) : année de DÉBUT de saison (2026-27 => 2026).
+        QCOMPARE(Backend::standingsSeason("soccer", QDate(2026, 11, 10)), 2026);
+        QCOMPARE(Backend::standingsSeason("soccer", QDate(2027, 4, 1)), 2026);
+        // NBA/NHL (basketball/hockey) : année de FIN de saison.
+        QCOMPARE(Backend::standingsSeason("basketball", QDate(2026, 11, 10)), 2027);
+        QCOMPARE(Backend::standingsSeason("hockey", QDate(2026, 11, 10)), 2027);
+
+        const QUrl url = Backend::standingsUrl("rugby", "270559", QDate(2026, 11, 10));
+        QCOMPARE(url.path(), QStringLiteral("/apis/v2/sports/rugby/270559/standings"));
+        QCOMPARE(QUrlQuery(url).queryItemValue("season"), QStringLiteral("2027"));
+    }
+
     void standingsModeCoexistsWithLive()
     {
         QTemporaryDir dir;
