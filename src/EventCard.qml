@@ -115,14 +115,32 @@ Rectangle {
                             Layout.alignment: Qt.AlignTop
                             spacing: 0
 
-                            Text {
-                                objectName: "nameText"
+                            RowLayout {
                                 Layout.fillWidth: true
-                                text: modelData.name
-                                color: theme.foreground
-                                font.pixelSize: 14
-                                elide: Text.ElideRight
-                                maximumLineCount: 1
+                                spacing: 9
+
+                                Text {
+                                    objectName: "nameText"
+                                    Layout.fillWidth: true
+                                    Layout.alignment: Qt.AlignBaseline
+                                    text: modelData.name
+                                    color: theme.foreground
+                                    font.pixelSize: 14
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 1
+                                }
+
+                                Text {
+                                    objectName: "scoreText"
+                                    Layout.preferredWidth: 46
+                                    Layout.alignment: Qt.AlignBaseline | Qt.AlignRight
+                                    horizontalAlignment: Text.AlignRight
+                                    text: card.modelData.state === "pre" ? "" : modelData.score
+                                    color: modelData.winner ? theme.accent : theme.foreground
+                                    font.pixelSize: 20
+                                    font.bold: true
+                                    elide: Text.ElideNone
+                                }
                             }
 
                             Text {
@@ -133,18 +151,6 @@ Rectangle {
                                 font.pixelSize: 10
                                 elide: Text.ElideRight
                             }
-                        }
-
-                        Text {
-                            objectName: "scoreText"
-                            Layout.preferredWidth: 46
-                            Layout.alignment: Qt.AlignTop | Qt.AlignRight
-                            horizontalAlignment: Text.AlignRight
-                            text: card.modelData.state === "pre" ? "" : modelData.score
-                            color: modelData.winner ? theme.accent : theme.foreground
-                            font.pixelSize: 20
-                            font.bold: true
-                            elide: Text.ElideNone
                         }
                     }
                 }

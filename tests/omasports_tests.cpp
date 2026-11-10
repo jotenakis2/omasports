@@ -240,14 +240,15 @@ private slots:
         QVERIFY2(file.isOpen() || file.open(QIODevice::ReadOnly | QIODevice::Text),
                  "cannot open EventCard.qml");
         const QString qml = QString::fromUtf8(file.readAll());
-        // Le score doit être dans sa propre colonne, largeur fixe, aligné à droite
-        // sur la ligne du nom, indépendant du record/badge/nom long.
+        // Le score occupe une largeur fixe, aligné à droite sur la ligne du nom
+        // (même rangée que le nom), indépendant du record/badge/nom long.
+        QVERIFY(qml.contains("objectName: \"scoreText\""));
         QVERIFY(qml.contains("Layout.preferredWidth: 46"));
-        QVERIFY(qml.contains("Layout.alignment: Qt.AlignTop | Qt.AlignRight"));
+        QVERIFY(qml.contains("Layout.alignment: Qt.AlignBaseline | Qt.AlignRight"));
         QVERIFY(qml.contains("elide: Text.ElideNone"));
         QVERIFY(qml.contains("maximumLineCount: 1"));
-        // Le score n'est plus imbriqué dans la RowLayout du nom (ancienne structure).
-        QVERIFY(!qml.contains("Text {\n                                    Layout.preferredWidth: 46"));
+        // Le score partage la rangée du nom ; le record est rendu sous cette rangée.
+        QVERIFY(qml.contains("RowLayout {\n                                Layout.fillWidth: true\n                                spacing: 9\n\n                                Text {\n                                    objectName: \"nameText\""));
     }
 
     void catalogCoversEverySport()

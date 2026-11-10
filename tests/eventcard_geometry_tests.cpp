@@ -1,5 +1,6 @@
 #include <QtTest>
 #include <QGuiApplication>
+#include <QImage>
 #include <QQmlContext>
 #include <QQmlEngine>
 #include <QQuickItem>
@@ -60,8 +61,8 @@ private:
                 {"winner", false}};
     }
 
-    QVariantMap model(const QString &homeName, const QString &awayName, const QString &record,
-                      const QString &logo, const QVariantList &goals) const
+    QVariantMap model(const QString &homeName, const QString &awayName, const QString &homeRecord,
+                      const QString &awayRecord, const QString &logo, const QVariantList &goals) const
     {
         return {{"name", homeName + " v " + awayName},
                 {"state", "post"},
@@ -71,14 +72,22 @@ private:
                 {"sport", "soccer"},
                 {"venue", "Stadium"},
                 {"goals", goals},
-                {"teams", QVariantList{team(homeName, "2", record, logo),
-                                       team(awayName, "1", record, logo)}}};
+                {"teams", QVariantList{team(homeName, "2", homeRecord, logo),
+                                       team(awayName, "1", awayRecord, logo)}}};
+    }
+
+    QVariantMap model(const QString &homeName, const QString &awayName, const QString &record,
+                      const QString &logo, const QVariantList &goals) const
+    {
+        return model(homeName, awayName, record, record, logo, goals);
     }
 
     struct RowGeom {
         qreal scoreX = -1;
         qreal scoreY = -1;
         qreal nameY = -1;
+        qreal scoreBaselineY = -1;
+        qreal nameBaselineY = -1;
     };
 
     QList<RowGeom> measure(QQuickItem *card) const
@@ -108,6 +117,8 @@ private:
             row.scoreX = scores.first()->mapToItem(card, 0, 0).x();
             row.scoreY = scores.first()->mapToItem(card, 0, 0).y();
             row.nameY = names.first()->mapToItem(card, 0, 0).y();
+            row.scoreBaselineY = row.scoreY + scores.first()->property("baselineOffset").toReal();
+            row.nameBaselineY = row.nameY + names.first()->property("baselineOffset").toReal();
             rows.append(row);
         }
         return rows;
@@ -122,9 +133,22 @@ private:
         QCoreApplication::processEvents();
     }
 
+    void saveAsymmetricSnapshot(QQuickView &view);
+
 private slots:
     void scoreGeometryIsStable();
+    void asymmetricScoreGeometry();
 };
+
+void EventCardGeometryTests::saveAsymmetricSnapshot(QQuickView &view)
+{
+    if (!view.isVisible())
+        return;
+    const QImage image = view.grabWindow();
+    if (image.isNull())
+        return;
+    image.save(QStringLiteral("/tmp/omas-card-asym.png"));
+}
 
 void EventCardGeometryTests::scoreGeometryIsStable()
 {
@@ -176,10 +200,10 @@ void EventCardGeometryTests::scoreGeometryIsStable()
                      qPrintable(QString("config %1 row %2 scoreX %3 vs %4")
                                     .arg(c).arg(i).arg(rows.at(i).scoreX)
                                     .arg(baseRows.at(i).scoreX)));
-            QVERIFY2(qAbs(rows.at(i).scoreY - rows.at(i).nameY) <= 1.0,
-                     qPrintable(QString("config %1 row %2 scoreY %3 vs nameY %4")
-                                    .arg(c).arg(i).arg(rows.at(i).scoreY)
-                                    .arg(rows.at(i).nameY)));
+            QVERIFY2(qAbs(rows.at(i).scoreBaselineY - rows.at(i).nameBaselineY) <= 1.0,
+                     qPrintable(QString("config %1 row %2 scoreBaselineY %3 vs nameBaselineY %4")
+                                    .arg(c).arg(i).arg(rows.at(i).scoreBaselineY)
+                                    .arg(rows.at(i).nameBaselineY)));
         }
         if (c == 1) {
             int readyBadges = 0;
@@ -218,6 +242,79 @@ void EventCardGeometryTests::scoreGeometryIsStable()
             QVERIFY2(readyBadges >= 2,
                      qPrintable(QString("expected 2 rendered badges, got %1").arg(readyBadges)));
         }
+    }
+}
+
+void EventCardGeometryTests::asymmetricScoreGeometry()
+{
+    StubTheme theme;
+    StubBackend backend;
+    StubTranslator translator;
+
+    const QVariantList noGoals;
+    const QVariantList goals = QVariantList{
+        QVariantMap{{"clock", "12'"}, {"scorer", "Scorer"}, {"teamAbbreviation", "HOM"},
+                    {"ownGoal", false}, {"penalty", false}, {"type", "Goal"}}};
+
+    // Reproduction fidèle : ligne 2 seule avec record (430 px).
+    const QVariantMap base = model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "", "4-3-3",
+                                   QString(), noGoals);
+
+    QQuickView view;
+    view.engine()->rootContext()->setContextProperty("theme", &theme);
+    view.engine()->rootContext()->setContextProperty("backend", &backend);
+    view.engine()->rootContext()->setContextProperty("translator", &translator);
+    view.setResizeMode(QQuickView::SizeViewToRootObject);
+    view.setInitialProperties({{"modelData", base}, {"width", 430}});
+    view.setSource(QUrl(QStringLiteral("qrc:/EventCard.qml")));
+    QVERIFY2(view.status() == QQuickView::Ready,
+             qPrintable(view.errors().isEmpty() ? QStringLiteral("load failed")
+                                                : view.errors().first().toString()));
+
+    auto *root = view.rootObject();
+    QVERIFY(root);
+    view.show();
+    settle(view);
+
+    // Écrit à chaque exécution (cas « record sur une seule ligne »), sans échec si impossible.
+    saveAsymmetricSnapshot(view);
+
+    const QList<QPair<QString, QVariantMap>> configs = {
+        {"record sur la ligne 2 seulement", base},
+        {"record sur la ligne 1 seulement",
+         model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "4-3-3", "", QString(), noGoals)},
+        {"hauteurs différentes (buteurs) et record asymétrique",
+         model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "", "4-3-3", QString(), goals)},
+        {"hauteurs différentes (buteurs) et record sur la ligne 1",
+         model("Borussia Moenchengladbach", "Wolverhampton Wanderers", "4-3-3", "", QString(), goals)},
+    };
+
+    for (const auto &cfg : configs) {
+        root->setProperty("modelData", cfg.second);
+        settle(view);
+        const QList<RowGeom> rows = measure(root);
+        QCOMPARE(rows.size(), 2);
+
+        const qreal rel0 = rows.at(0).scoreBaselineY - rows.at(0).nameBaselineY;
+        const qreal rel1 = rows.at(1).scoreBaselineY - rows.at(1).nameBaselineY;
+
+        for (int i = 0; i < rows.size(); ++i) {
+            const qreal delta = rows.at(i).scoreBaselineY - rows.at(i).nameBaselineY;
+            QVERIFY2(qAbs(delta) <= 1.0,
+                     qPrintable(QString("%1: ligne %2 scoreBaselineY=%3 nameBaselineY=%4 (delta=%5)")
+                                    .arg(cfg.first)
+                                    .arg(i)
+                                    .arg(rows.at(i).scoreBaselineY)
+                                    .arg(rows.at(i).nameBaselineY)
+                                    .arg(delta)));
+        }
+
+        QVERIFY2(qAbs(rel0 - rel1) <= 1.0,
+                 qPrintable(QString("%1: delta relatif ligne0=%2 ligne1=%3 (ecart=%4)")
+                                .arg(cfg.first)
+                                .arg(rel0)
+                                .arg(rel1)
+                                .arg(rel0 - rel1)));
     }
 }
 
