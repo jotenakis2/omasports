@@ -1,6 +1,19 @@
 {
-  "%n live": { "one": "%n live", "other": "%n live" },
-  "%n games": { "one": "%n game", "other": "%n games" },
-  "%n games in progress": { "one": "%n game in progress", "other": "%n games in progress" },
-  "%n leagues": { "one": "%n league", "other": "%n leagues" }
+  "%n live": {
+    "one": "%n live",
+    "other": "%n live"
+  },
+  "%n games": {
+    "one": "%n game",
+    "other": "%n games"
+  },
+  "%n games in progress": {
+    "one": "%n game in progress",
+    "other": "%n games in progress"
+  },
+  "%n leagues": {
+    "one": "%n league",
+    "other": "%n leagues"
+  },
+  "Standings season is uncertain.": "Standings season is uncertain."
 }

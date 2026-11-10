@@ -6,6 +6,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QMap>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegularExpression>
@@ -16,6 +17,7 @@
 #include <QUrlQuery>
 
 #include <algorithm>
+#include <functional>
 
 namespace {
 
@@ -96,6 +98,45 @@ QString teamLogo(const QJsonObject &team)
         return logo;
     const auto logos = team.value("logos").toArray();
     return logos.isEmpty() ? QString() : logos.first().toObject().value("href").toString();
+}
+
+int uniformMatchesPlayed(const QVariantList &groups)
+{
+    int totalTeams = 0;
+    int uniform = -1;
+    for (const auto &groupValue : groups) {
+        const QVariantList rows = groupValue.toMap().value("rows").toList();
+        for (const auto &rowValue : rows) {
+            ++totalTeams;
+            const QStringList cells = rowValue.toMap().value("cells").toStringList();
+            if (cells.isEmpty())
+                return -1;
+            bool ok = false;
+            const int played = cells.first().toInt(&ok);
+            if (!ok)
+                return -1;
+            if (uniform == -1)
+                uniform = played;
+            else if (played != uniform)
+                return -1;
+        }
+    }
+    return totalTeams == 0 ? -1 : uniform;
+}
+
+bool isCompleteSeasonTable(const QVariantList &groups)
+{
+    const int played = uniformMatchesPlayed(groups);
+    if (played <= 0)
+        return false;
+    int teamCount = 0;
+    for (const auto &groupValue : groups)
+        teamCount += groupValue.toMap().value("rows").toList().size();
+    if (teamCount <= 1)
+        return false;
+    // Double ou simple tournoi à la ronde : toutes les équipes ont disputé le
+    // même nombre de matchs, égal au volume d'un championnat complet.
+    return played == 2 * (teamCount - 1) || played == (teamCount - 1);
 }
 
 // "12-4" for the season so far, when the feed gives one.
@@ -300,6 +341,7 @@ void Backend::selectLeague(int index)
     m_leagueIndex = index;
     m_events.clear();
     m_standings.clear();
+    m_standingsSeasonUncertain = false;
     m_liveCount = 0;
     m_updatedAt = QDateTime();
     m_status = m_online ? "loading" : "idle";
@@ -425,6 +467,7 @@ void Backend::setStandings(bool visible)
 
     m_standingsVisible = visible;
     m_standings.clear();
+    m_standingsSeasonUncertain = false;
     m_standingsHeaders = standingsHeadersFor(this->league().value("sport").toString());
     m_events.clear();
     m_liveCount = 0;
@@ -905,9 +948,11 @@ void Backend::fetchStandings()
         return;
 
     const QString sport = league.value("sport").toString();
+    const QString leagueSlug = league.value("league").toString();
     m_standingsHeaders = standingsHeadersFor(sport);
     if (m_standingsHeaders.isEmpty()) {
         m_standings.clear();
+        m_standingsSeasonUncertain = false;
         m_updatedAt = QDateTime::currentDateTime();
         m_status = "ready";
         m_error.clear();
@@ -920,46 +965,99 @@ void Backend::fetchStandings()
     m_error.clear();
     emit statusChanged();
 
-    const QUrl url = standingsUrl(sport, league.value("league").toString(), date());
-    QNetworkRequest request(url);
-    request.setTransferTimeout(15000);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+    auto runCandidates = [this, sport, leagueSlug](int scoreboardYear, bool seasonInProgress) {
+        const QList<int> candidates = standingsSeasonCandidates(sport, date(), scoreboardYear);
+        if (candidates.isEmpty()) {
+            m_status = "error";
+            m_error = tr("No standings season candidates");
+            emit statusChanged();
+            return;
+        }
 
-    QNetworkReply *reply = m_network.get(request);
-    m_pending = reply;
-    connect(reply, &QNetworkReply::finished, this, [this, reply, sport] {
-        if (reply != m_pending)
+        struct State {
+            QList<int> candidates;
+            int index = 0;
+            QMap<int, QByteArray> payloads;
+        };
+        auto state = std::make_shared<State>();
+        state->candidates = candidates;
+
+        auto tryNext = std::make_shared<std::function<void()>>();
+        *tryNext = [this, sport, leagueSlug, seasonInProgress, state, tryNext]() {
+            if (state->index >= state->candidates.size()) {
+                const QVariantMap chosen = chooseStandingsSeason(
+                    sport, state->candidates, state->payloads, seasonInProgress);
+                m_standings = chosen.value("groups").toList();
+                m_standingsHeaders = standingsHeadersFor(sport);
+                m_standingsSeasonUncertain = chosen.value("uncertain", true).toBool();
+                m_updatedAt = QDateTime::currentDateTime();
+                m_status = "ready";
+                m_error.clear();
+                emit eventsChanged();
+                emit standingsChanged();
+                emit statusChanged();
+                return;
+            }
+
+            const int season = state->candidates.at(state->index++);
+            const QUrl url = standingsUrlForSeason(sport, leagueSlug, season);
+            QNetworkRequest request(url);
+            request.setTransferTimeout(15000);
+            request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+
+            QNetworkReply *reply = m_network.get(request);
+            m_pending = reply;
+            connect(reply, &QNetworkReply::finished, this, [this, sport, seasonInProgress, state, tryNext, season, reply] {
+                if (reply != m_pending)
+                    return;
+                m_pending.clear();
+                const QByteArray payload = reply->readAll();
+                const QString networkError = reply->error() == QNetworkReply::NoError
+                                               ? QString() : reply->errorString();
+                reply->deleteLater();
+
+                if (networkError.isEmpty())
+                    state->payloads.insert(season, payload);
+
+                const QVariantMap chosen = chooseStandingsSeason(
+                    sport, state->candidates, state->payloads, seasonInProgress);
+                if (!chosen.value("uncertain", true).toBool()) {
+                    m_standings = chosen.value("groups").toList();
+                    m_standingsHeaders = standingsHeadersFor(sport);
+                    m_standingsSeasonUncertain = false;
+                    m_updatedAt = QDateTime::currentDateTime();
+                    m_status = "ready";
+                    m_error.clear();
+                    emit eventsChanged();
+                    emit standingsChanged();
+                    emit statusChanged();
+                    return;
+                }
+
+                (*tryNext)();
+            });
+        };
+
+        (*tryNext)();
+    };
+
+    // Récupère l'année de saison indiquée par le scoreboard pour l'ajouter aux
+    // candidates, sans jamais bloquer le chargement du classement en cas d'échec.
+    const QUrl sbUrl = scoreboardUrl(sport, leagueSlug, date());
+    QNetworkRequest sbRequest(sbUrl);
+    sbRequest.setTransferTimeout(15000);
+    sbRequest.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+    QNetworkReply *sbReply = m_network.get(sbRequest);
+    m_pending = sbReply;
+    connect(sbReply, &QNetworkReply::finished, this, [this, sbReply, runCandidates] {
+        if (sbReply != m_pending)
             return;
         m_pending.clear();
-        const QByteArray payload = reply->readAll();
-        const QString networkError = reply->error() == QNetworkReply::NoError
-                                       ? QString() : reply->errorString();
-        reply->deleteLater();
-
-        if (!networkError.isEmpty()) {
-            m_status = "error";
-            m_error = networkError;
-            emit statusChanged();
-            return;
-        }
-
-        QString parseError;
-        const QVariantList groups = parseStandings(payload, sport, &parseError);
-        if (!parseError.isEmpty()) {
-            m_status = "error";
-            m_error = parseError;
-            emit statusChanged();
-            return;
-        }
-
-        m_standings = groups;
-        m_standingsHeaders = standingsHeadersFor(sport);
-        m_updatedAt = QDateTime::currentDateTime();
-        m_status = "ready";
-        m_error.clear();
-        emit eventsChanged();
-        emit standingsChanged();
-        emit statusChanged();
+        const QByteArray payload = sbReply->readAll();
+        const bool ok = sbReply->error() == QNetworkReply::NoError;
+        sbReply->deleteLater();
+        runCandidates(ok ? scoreboardSeasonYear(payload) : 0,
+                      ok ? scoreboardIndicatesSeasonInProgress(payload) : true);
     });
 }
 
@@ -1277,15 +1375,126 @@ int Backend::standingsSeason(const QString &sport, const QDate &date)
     return year;
 }
 
-QUrl Backend::standingsUrl(const QString &sport, const QString &league, const QDate &date)
+int Backend::scoreboardSeasonYear(const QByteArray &payload)
+{
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(payload, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject())
+        return 0;
+    const QJsonArray leagues = document.object().value("leagues").toArray();
+    if (leagues.isEmpty())
+        return 0;
+    return leagues.first().toObject().value("season").toObject().value("year").toInt();
+}
+
+bool Backend::scoreboardIndicatesSeasonInProgress(const QByteArray &payload)
+{
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(payload, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !document.isObject())
+        return false;
+    const QJsonObject root = document.object();
+    if (root.value("leagues").toArray().isEmpty())
+        return false;
+    // Le scoreboard décrit la saison courante : un match non terminé ou à venir
+    // indique une saison en cours (et non une saison archivée entièrement jouée).
+    for (const auto &eventValue : root.value("events").toArray()) {
+        const QJsonObject event = eventValue.toObject();
+        QJsonObject status = event.value("status").toObject();
+        const QJsonArray competitions = event.value("competitions").toArray();
+        if (!competitions.isEmpty())
+            status = competitions.first().toObject().value("status").toObject();
+        const QString state = status.value("type").toObject().value("state").toString();
+        if (state != QLatin1String("post"))
+            return true;
+    }
+    // Sans événement exploitable, la présence d'une saison dans le scoreboard
+    // suffit à considérer le contexte comme courant.
+    return root.value("leagues").toArray().first().toObject().value("season").isObject();
+}
+
+QList<int> Backend::standingsSeasonCandidates(const QString &sport, const QDate &date,
+                                              int scoreboardYear)
+{
+    const int computed = standingsSeason(sport, date);
+    QList<int> candidates;
+    auto add = [&candidates](int year) {
+        if (year > 0 && !candidates.contains(year))
+            candidates.append(year);
+    };
+    // Année calculée par sport, puis l'autre année (± 1) de part et d'autre,
+    // puis l'année lue dans le scoreboard quand disponible.
+    add(computed);
+    add(computed - 1);
+    add(computed + 1);
+    add(scoreboardYear);
+    return candidates;
+}
+
+QUrl Backend::standingsUrlForSeason(const QString &sport, const QString &league, int season)
 {
     QUrl url(QStringLiteral("https://site.api.espn.com/apis/v2/sports/%1/%2/standings")
                  .arg(sport, league));
     QUrlQuery query;
-    query.addQueryItem(QStringLiteral("season"),
-                       QString::number(standingsSeason(sport, date)));
+    query.addQueryItem(QStringLiteral("season"), QString::number(season));
     url.setQuery(query);
     return url;
+}
+
+QUrl Backend::standingsUrl(const QString &sport, const QString &league, const QDate &date)
+{
+    return standingsUrlForSeason(sport, league, standingsSeason(sport, date));
+}
+
+QVariantMap Backend::chooseStandingsSeason(const QString &sport, const QList<int> &candidates,
+                                           const QMap<int, QByteArray> &payloads,
+                                           bool scoreboardSeasonInProgress)
+{
+    QVariantMap chosen;
+    chosen.insert("season", candidates.isEmpty() ? 0 : candidates.first());
+    chosen.insert("groups", QVariantList());
+    chosen.insert("uncertain", true);
+
+    for (const int season : candidates) {
+        if (!payloads.contains(season))
+            continue;
+        QString error;
+        const QVariantList groups = parseStandings(payloads.value(season), sport, &error);
+        if (!error.isEmpty())
+            continue;
+
+        bool teamFound = false;
+        for (const auto &groupValue : groups)
+            teamFound = teamFound || !groupValue.toMap().value("rows").toList().isEmpty();
+        if (!teamFound)
+            continue;
+
+        const bool complete = isCompleteSeasonTable(groups);
+        if (complete && scoreboardSeasonInProgress)
+            continue;
+
+        chosen.insert("season", season);
+        chosen.insert("groups", groups);
+        chosen.insert("uncertain", false);
+        return chosen;
+    }
+
+    // Aucune candidate concluante : on retient la première disponible et on
+    // signale l'incertitude plutôt que de présenter une table périmée comme sûre.
+    for (const int season : candidates) {
+        if (!payloads.contains(season))
+            continue;
+        QString error;
+        const QVariantList groups = parseStandings(payloads.value(season), sport, &error);
+        if (error.isEmpty()) {
+            chosen.insert("season", season);
+            chosen.insert("groups", groups);
+            chosen.insert("uncertain", true);
+            return chosen;
+        }
+    }
+
+    return chosen;
 }
 
 QVariantList Backend::parseStandings(const QByteArray &payload, const QString &sport,

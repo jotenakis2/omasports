@@ -35,6 +35,7 @@ class Backend : public QObject {
     Q_PROPERTY(bool standingsVisible READ standingsVisible NOTIFY standingsChanged)
     Q_PROPERTY(QVariantList standings READ standings NOTIFY standingsChanged)
     Q_PROPERTY(QStringList standingsHeaders READ standingsHeaders NOTIFY standingsChanged)
+    Q_PROPERTY(bool standingsSeasonUncertain READ standingsSeasonUncertain NOTIFY standingsChanged)
     Q_PROPERTY(QVariantList settingsRows READ settingsRows NOTIFY leaguesChanged)
     Q_PROPERTY(QStringList enabledLeagues READ enabledLeagues NOTIFY leaguesChanged)
     Q_PROPERTY(bool matchOpen READ matchOpen NOTIFY matchChanged)
@@ -62,6 +63,7 @@ public:
     bool standingsVisible() const { return m_standingsVisible; }
     QVariantList standings() const { return m_standings; }
     QStringList standingsHeaders() const { return m_standingsHeaders; }
+    bool standingsSeasonUncertain() const { return m_standingsSeasonUncertain; }
     QVariantList settingsRows() const;
     QStringList enabledLeagues() const;
     bool matchOpen() const { return m_matchOpen; }
@@ -106,7 +108,18 @@ public:
     static QStringList standingsHeadersFor(const QString &sport);
     static QUrl scoreboardUrl(const QString &sport, const QString &league, const QDate &date);
     static int standingsSeason(const QString &sport, const QDate &date);
+    static int scoreboardSeasonYear(const QByteArray &payload);
+    static bool scoreboardIndicatesSeasonInProgress(const QByteArray &payload);
+    static QList<int> standingsSeasonCandidates(const QString &sport, const QDate &date,
+                                                int scoreboardYear = 0);
+    static QUrl standingsUrlForSeason(const QString &sport, const QString &league, int season);
     static QUrl standingsUrl(const QString &sport, const QString &league, const QDate &date);
+    // Choisit la saison de classement la plus plausible parmi les candidates, à
+    // partir des réponses JSON déjà chargées (une par saison). Aucune requête
+    // réseau : les tests fournissent des charges enregistrées.
+    static QVariantMap chooseStandingsSeason(const QString &sport, const QList<int> &candidates,
+                                             const QMap<int, QByteArray> &payloads,
+                                             bool scoreboardSeasonInProgress);
 
 signals:
     void statusChanged();
@@ -172,6 +185,7 @@ private:
     int m_liveCount = 0;
     bool m_liveMode = false;
     bool m_standingsVisible = false;
+    bool m_standingsSeasonUncertain = false;
     QString m_status = "idle";
     QString m_error;
     QDateTime m_updatedAt;

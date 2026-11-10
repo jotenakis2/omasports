@@ -4,6 +4,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocale>
+#include <QMap>
 #include <QSet>
 #include <QSettings>
 #include <QTemporaryDir>
@@ -535,6 +536,142 @@ private slots:
         const QUrl url = Backend::standingsUrl("rugby", "270559", QDate(2026, 11, 10));
         QCOMPARE(url.path(), QStringLiteral("/apis/v2/sports/rugby/270559/standings"));
         QCOMPARE(QUrlQuery(url).queryItemValue("season"), QStringLiteral("2027"));
+    }
+
+    void standingsSeasonRejectsCompletedRugbyTable()
+    {
+        QByteArray teams2026;
+        QByteArray teams2027;
+        for (int i = 1; i <= 14; ++i) {
+            if (i > 1) { teams2026 += ','; teams2027 += ','; }
+            teams2026 += QByteArray("{\"team\":{\"displayName\":\"T%1\"},\"stats\":["
+                                    "{\"name\":\"gamesPlayed\",\"displayValue\":\"26\"},"
+                                    "{\"name\":\"gamesWon\",\"displayValue\":\"13\"},"
+                                    "{\"name\":\"gamesDrawn\",\"displayValue\":\"0\"},"
+                                    "{\"name\":\"gamesLost\",\"displayValue\":\"13\"},"
+                                    "{\"name\":\"points\",\"displayValue\":\"50\"},"
+                                    "{\"name\":\"rank\",\"value\":%1}]}")
+                             .replace("%1", QByteArray::number(i));
+            teams2027 += QByteArray("{\"team\":{\"displayName\":\"T%1\"},\"stats\":["
+                                    "{\"name\":\"gamesPlayed\",\"displayValue\":\"9\"},"
+                                    "{\"name\":\"gamesWon\",\"displayValue\":\"5\"},"
+                                    "{\"name\":\"gamesDrawn\",\"displayValue\":\"0\"},"
+                                    "{\"name\":\"gamesLost\",\"displayValue\":\"4\"},"
+                                    "{\"name\":\"points\",\"displayValue\":\"20\"},"
+                                    "{\"name\":\"rank\",\"value\":%1}]}")
+                             .replace("%1", QByteArray::number(i));
+        }
+        const QByteArray payload2026 = "{\"standings\":{\"entries\":[" + teams2026 + "]}}";
+        const QByteArray payload2027 = "{\"standings\":{\"entries\":[" + teams2027 + "]}}";
+
+        // Scoreboard de Top 14 indiquant 2026 alors que la saison en cours est 2027.
+        const QByteArray scoreboard = R"({"leagues":[{"season":{"year":2026}}],"events":[{"status":{"type":{"state":"pre"}}}]})";
+        const QList<int> candidates = Backend::standingsSeasonCandidates(
+            "rugby", QDate(2026, 11, 10), Backend::scoreboardSeasonYear(scoreboard));
+        QMap<int, QByteArray> payloads;
+        payloads.insert(2026, payload2026);
+        payloads.insert(2027, payload2027);
+
+        const QVariantMap chosen = Backend::chooseStandingsSeason(
+            "rugby", candidates, payloads,
+            Backend::scoreboardIndicatesSeasonInProgress(scoreboard));
+        QCOMPARE(chosen.value("season").toInt(), 2027);
+        QVERIFY(!chosen.value("uncertain").toBool());
+        const QVariantList groups = chosen.value("groups").toList();
+        QCOMPARE(groups.size(), 1);
+        QCOMPARE(groups.first().toMap().value("rows").toList().first().toMap()
+                     .value("cells").toStringList().first(),
+                 QStringLiteral("9"));
+    }
+
+    void standingsSeasonRejectsCompletedBrasileiraoTable()
+    {
+        QByteArray teams2025;
+        QByteArray teams2026;
+        for (int i = 1; i <= 20; ++i) {
+            if (i > 1) { teams2025 += ','; teams2026 += ','; }
+            teams2025 += QByteArray("{\"team\":{\"displayName\":\"B%1\"},\"stats\":["
+                                    "{\"name\":\"gamesPlayed\",\"displayValue\":\"38\"},"
+                                    "{\"name\":\"wins\",\"displayValue\":\"20\"},"
+                                    "{\"name\":\"ties\",\"displayValue\":\"9\"},"
+                                    "{\"name\":\"losses\",\"displayValue\":\"9\"},"
+                                    "{\"name\":\"pointDifferential\",\"displayValue\":\"+10\"},"
+                                    "{\"name\":\"points\",\"displayValue\":\"69\"},"
+                                    "{\"name\":\"rank\",\"value\":%1}]}")
+                             .replace("%1", QByteArray::number(i));
+            teams2026 += QByteArray("{\"team\":{\"displayName\":\"B%1\"},\"stats\":["
+                                    "{\"name\":\"gamesPlayed\",\"displayValue\":\"34\"},"
+                                    "{\"name\":\"wins\",\"displayValue\":\"18\"},"
+                                    "{\"name\":\"ties\",\"displayValue\":\"8\"},"
+                                    "{\"name\":\"losses\",\"displayValue\":\"8\"},"
+                                    "{\"name\":\"pointDifferential\",\"displayValue\":\"+9\"},"
+                                    "{\"name\":\"points\",\"displayValue\":\"62\"},"
+                                    "{\"name\":\"rank\",\"value\":%1}]}")
+                             .replace("%1", QByteArray::number(i));
+        }
+        const QByteArray payload2025 = "{\"standings\":{\"entries\":[" + teams2025 + "]}}";
+        const QByteArray payload2026 = "{\"standings\":{\"entries\":[" + teams2026 + "]}}";
+
+        const QByteArray scoreboard = R"({"leagues":[{"season":{"year":2026}}],"events":[{"status":{"type":{"state":"in"}}}]})";
+        const QList<int> candidates = Backend::standingsSeasonCandidates(
+            "soccer", QDate(2026, 3, 15), Backend::scoreboardSeasonYear(scoreboard));
+        QMap<int, QByteArray> payloads;
+        payloads.insert(2025, payload2025);
+        payloads.insert(2026, payload2026);
+
+        const QVariantMap chosen = Backend::chooseStandingsSeason(
+            "soccer", candidates, payloads,
+            Backend::scoreboardIndicatesSeasonInProgress(scoreboard));
+        QCOMPARE(chosen.value("season").toInt(), 2026);
+        QVERIFY(!chosen.value("uncertain").toBool());
+    }
+
+    void standingsSeasonKeepsLigue1FirstCandidate()
+    {
+        QByteArray teams;
+        for (int i = 1; i <= 18; ++i) {
+            if (i > 1) teams += ',';
+            teams += QByteArray("{\"team\":{\"displayName\":\"L%1\"},\"stats\":["
+                                "{\"name\":\"gamesPlayed\",\"displayValue\":\"9\"},"
+                                "{\"name\":\"wins\",\"displayValue\":\"5\"},"
+                                "{\"name\":\"ties\",\"displayValue\":\"2\"},"
+                                "{\"name\":\"losses\",\"displayValue\":\"2\"},"
+                                "{\"name\":\"pointDifferential\",\"displayValue\":\"+3\"},"
+                                "{\"name\":\"points\",\"displayValue\":\"17\"},"
+                                "{\"name\":\"rank\",\"value\":%1}]}")
+                         .replace("%1", QByteArray::number(i));
+        }
+        const QByteArray payload = "{\"standings\":{\"entries\":[" + teams + "]}}";
+        const QByteArray scoreboard = R"({"leagues":[{"season":{"year":2026}}],"events":[{"status":{"type":{"state":"pre"}}}]})";
+        const QList<int> candidates = Backend::standingsSeasonCandidates(
+            "soccer", QDate(2026, 11, 10), Backend::scoreboardSeasonYear(scoreboard));
+        QVERIFY(!candidates.isEmpty());
+        QCOMPARE(candidates.first(), 2026);
+
+        QMap<int, QByteArray> payloads;
+        payloads.insert(2026, payload);
+        const QVariantMap chosen = Backend::chooseStandingsSeason(
+            "soccer", candidates, payloads,
+            Backend::scoreboardIndicatesSeasonInProgress(scoreboard));
+        QCOMPARE(chosen.value("season").toInt(), 2026);
+        QVERIFY(!chosen.value("uncertain").toBool());
+    }
+
+    void standingsSeasonExposesUncertainState()
+    {
+        // Aucune candidate concluante : tables vides pour toutes les saisons.
+        const QByteArray emptyPayload = "{\"standings\":{\"entries\":[]}}";
+        const QList<int> candidates = Backend::standingsSeasonCandidates(
+            "soccer", QDate(2026, 11, 10), 2026);
+        QMap<int, QByteArray> payloads;
+        for (int season : candidates)
+            payloads.insert(season, emptyPayload);
+
+        const QVariantMap chosen = Backend::chooseStandingsSeason(
+            "soccer", candidates, payloads, true);
+        QVERIFY(chosen.value("uncertain").toBool());
+        QCOMPARE(chosen.value("season").toInt(), candidates.first());
+        QVERIFY(chosen.value("groups").toList().isEmpty());
     }
 
     void standingsModeCoexistsWithLive()

@@ -38,6 +38,28 @@ Item {
             width: scroller.width - 12
             spacing: 18
 
+            Rectangle {
+                visible: backend.standingsSeasonUncertain
+                width: tables.width
+                height: uncertainText.implicitHeight + 16
+                radius: theme.radius
+                color: theme.card
+                border.color: theme.accent
+                border.width: 1
+
+                Text {
+                    id: uncertainText
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    text: qsTr("Standings season is uncertain.")
+                    color: theme.foreground
+                    font.pixelSize: 11
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+
             Repeater {
                 model: backend.standings
 
