@@ -797,6 +797,16 @@ void Backend::fetchMatch()
         return;
     }
 
+    // Golf, tennis, MMA, and racing have no match summary endpoint; show the
+    // scoreboard data instead of an avoidable 404.
+    if (!matchSummarySupported(sport)) {
+        m_match.insert("detailsUnavailable", true);
+        m_matchStatus = "ready";
+        m_matchError.clear();
+        emit matchChanged();
+        return;
+    }
+
     m_matchStatus = "loading";
     m_matchError.clear();
     emit matchChanged();
@@ -821,11 +831,20 @@ void Backend::fetchMatch()
         const QByteArray payload = reply->readAll();
         const QString networkError = reply->error() == QNetworkReply::NoError
                                        ? QString() : reply->errorString();
+        const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         reply->deleteLater();
 
         if (!networkError.isEmpty()) {
-            m_matchStatus = "error";
-            m_matchError = networkError;
+            // Some leagues or events simply have no summary; that is not a
+            // loading failure worth an error screen.
+            if (httpStatus == 400 || httpStatus == 404) {
+                m_match.insert("detailsUnavailable", true);
+                m_matchStatus = "ready";
+                m_matchError.clear();
+            } else {
+                m_matchStatus = "error";
+                m_matchError = networkError;
+            }
             emit matchChanged();
             return;
         }
@@ -2357,6 +2376,10 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error,
             }
         }
 
+        QString venue = competition.value("venue").toObject().value("fullName").toString();
+        if (venue.isEmpty())
+            venue = event.value("venue").toObject().value("fullName").toString();
+
         QVariantMap item;
         item.insert("id", event.value("id").toString());
         item.insert("name", event.value("name").toString());
@@ -2369,7 +2392,7 @@ QVariantList Backend::parseScoreboard(const QByteArray &payload, QString *error,
         item.insert("teams", teams);
         item.insert("goals", goals);
         item.insert("cards", cards);
-        item.insert("venue", competition.value("venue").toObject().value("fullName").toString());
+        item.insert("venue", venue);
         events.append(item);
     }
 
@@ -2462,4 +2485,10 @@ int Backend::liveCountOf(const QVariantList &events)
         if (event.toMap().value("state").toString() == "in")
             ++count;
     return count;
+}
+
+bool Backend::matchSummarySupported(const QString &sport)
+{
+    return sport != QLatin1String("golf") && sport != QLatin1String("tennis")
+        && sport != QLatin1String("mma") && sport != QLatin1String("racing");
 }

@@ -125,6 +125,8 @@ public:
     static QVariantList leagueCatalog();
     static QVariantList parseScoreboard(const QByteArray &payload, QString *error = nullptr,
                                          const QString &sport = {}, const QString &league = {});
+    // ESPN's summary endpoint only exists for team-based competitions.
+    static bool matchSummarySupported(const QString &sport);
     static QVariantList parseUpcomingSchedule(const QByteArray &currentMonthPayload,
                                               const QByteArray &nextMonthPayload,
                                               const QDate &today, QString *error = nullptr,

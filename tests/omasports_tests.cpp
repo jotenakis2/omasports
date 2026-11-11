@@ -500,6 +500,44 @@ private slots:
         QCOMPARE(Backend::liveCountOf(events), 0);
     }
 
+    void parseScoreboardFallsBackToTheEventVenue()
+    {
+        // Tennis tournament events have no competitions array; their venue
+        // lives at the event level.
+        const char *payload = R"({
+          "events": [{
+            "id": "148-2026",
+            "name": "Bybit Stockholm Open",
+            "date": "2026-11-07T05:00Z",
+            "status": {"type": {"state": "post", "detail": "Final",
+                                "shortDetail": "Final", "completed": true}},
+            "venue": {"fullName": "Kungliga Tennishallen"},
+            "competitions": []
+          }]
+        })";
+        QString error;
+        const QVariantList events = Backend::parseScoreboard(payload, &error);
+        QVERIFY(error.isEmpty());
+        QCOMPARE(events.size(), 1);
+        const QVariantMap event = events.first().toMap();
+        QCOMPARE(event.value("venue").toString(), QStringLiteral("Kungliga Tennishallen"));
+        QCOMPARE(event.value("state").toString(), QStringLiteral("post"));
+        QVERIFY(event.value("teams").toList().isEmpty());
+    }
+
+    void matchSummaryIsOnlyForTeamSports()
+    {
+        QVERIFY(!Backend::matchSummarySupported("golf"));
+        QVERIFY(!Backend::matchSummarySupported("tennis"));
+        QVERIFY(!Backend::matchSummarySupported("mma"));
+        QVERIFY(!Backend::matchSummarySupported("racing"));
+        QVERIFY(Backend::matchSummarySupported("soccer"));
+        QVERIFY(Backend::matchSummarySupported("basketball"));
+        QVERIFY(Backend::matchSummarySupported("rugby"));
+        QVERIFY(Backend::matchSummarySupported("cricket"));
+        QVERIFY(Backend::matchSummarySupported("volleyball"));
+    }
+
     void parseScoreboardDeduplicatesGhostAndReversedFixtures()
     {
         // Même affiche à moins de 36 h, dont une inversée et non jouée (pre, 0-0) :

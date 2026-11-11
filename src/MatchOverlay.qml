@@ -19,6 +19,7 @@ Item {
     readonly property var goals: backend.match.goals || []
     readonly property var cards: backend.match.cards || []
     readonly property var stats: backend.match.stats || []
+    readonly property bool detailsUnavailable: backend.match.detailsUnavailable === true
 
     function team(home) {
         for (var i = 0; i < teams.length; ++i)
@@ -101,13 +102,17 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Match")
+                    text: overlay.detailsUnavailable
+                          ? (backend.match.name || qsTr("Event"))
+                          : qsTr("Match")
                     color: theme.foreground
                     font.pixelSize: theme.fsSubtitleLarge
                     font.bold: true
+                    elide: Text.ElideRight
                 }
 
                 ActionButton {
+                    visible: !overlay.detailsUnavailable
                     text: qsTr("Refresh")
                     onClicked: backend.refreshMatch()
                 }
@@ -121,6 +126,29 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
+                visible: overlay.detailsUnavailable
+                spacing: 12
+
+                Text {
+                    text: overlay.statusText()
+                    color: backend.match.state === "in" ? theme.accent : theme.mutedForeground
+                    font.pixelSize: theme.fsBody
+                    font.bold: backend.match.state === "in"
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    visible: text.length > 0
+                    text: backend.match.venue || ""
+                    color: theme.mutedForeground
+                    font.pixelSize: theme.fsBody
+                    elide: Text.ElideRight
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                visible: !overlay.detailsUnavailable
                 spacing: 14
 
                 ColumnLayout {
@@ -492,14 +520,17 @@ Item {
                                  && overlay.goals.length === 0
                                  && overlay.cards.length === 0
                                  && overlay.stats.length === 0
-                        text: backend.match.state === "pre"
-                              ? qsTr("Match not started.")
-                              : backend.match.state === "in"
-                                ? qsTr("No details yet.")
-                                : qsTr("No details for this match.")
+                        text: overlay.detailsUnavailable
+                              ? qsTr("Detailed match information is not available for this sport.")
+                              : backend.match.state === "pre"
+                                ? qsTr("Match not started.")
+                                : backend.match.state === "in"
+                                  ? qsTr("No details yet.")
+                                  : qsTr("No details for this match.")
                         color: theme.mutedForeground
                         font.pixelSize: theme.fsSmall
                         horizontalAlignment: Text.AlignHCenter
+                        wrapMode: Text.WordWrap
                     }
                 }
             }
