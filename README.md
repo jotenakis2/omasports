@@ -97,10 +97,18 @@ add one, copy `src/i18n/fr.json`, translate the values, and add the file to
 ## Development
 
 ```sh
-bin/build   # qmake6 + make into build/omasports
-bin/test    # Qt Test suite, offscreen
-./check.sh  # shellcheck (bin/*, check.sh), compilation, puis tests offscreen
+bin/build        # qmake6 + make into build/omasports
+bin/build-x86_64 # x86_64 binary in build-x86_64/omasports
+bin/test         # Qt Test suite, offscreen
+./check.sh       # shellcheck (bin/*, check.sh), compilation, puis tests offscreen
 ```
+
+`bin/build-x86_64` builds natively on an x86_64 host. From an aarch64 host it
+uses an x86_64 Arch container through podman and writes
+`build-x86_64/omasports`; `OMASPORTS_BUILD_IMAGE` overrides the container image.
+QEMU emulation can be slow or hit toolchain limits, so a native x86_64 host or
+CI runner is the reliable route. Set `BUILD_DIR` to send a normal `bin/build`
+somewhere other than `build/`.
 
 Running the tests requires Qt Test and Qt Quick Test (module QML `QtTest` and
 `libQt6QuickTest`, provided by `qt6-declarative`). The geometry tests load QML
@@ -122,7 +130,7 @@ ESPN's sport and league slugs. Its scoreboard lives at
 ## Layout
 
 ```text
-bin/build  bin/test  bin/install
+bin/build  bin/build-x86_64  bin/test  bin/install
 src/main.cpp            application setup
 src/backend.{h,cpp}     catalog, scores, live scan, league filter, settings
 src/theme.{h,cpp}       Omarchy palette and Hyprland rounding

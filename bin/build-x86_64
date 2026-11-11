@@ -1,0 +1,41 @@
+#!/bin/sh
+# shellcheck enable=all
+set -eu
+
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+HOST_ARCH="$(uname -m)"
+OUT="${ROOT}/build-x86_64"
+mkdir -p "${OUT}"
+
+if [ "${HOST_ARCH}" = "x86_64" ]; then
+    BUILD_DIR="${OUT}" "${ROOT}/bin/build"
+    exit 0
+fi
+
+if ! command -v podman >/dev/null 2>&1; then
+    echo "podman is required to build x86_64 on ${HOST_ARCH}." >&2
+    exit 1
+fi
+
+IMAGE="${OMASPORTS_BUILD_IMAGE:-docker.io/library/archlinux:latest}"
+
+echo "Building x86_64 in ${IMAGE} (emulation can take a while)…"
+if ! podman run --rm --arch amd64 \
+    -v "${ROOT}:/src:ro" \
+    -v "${OUT}:/out" \
+    -w /out \
+    "${IMAGE}" \
+    /bin/sh -c '
+        set -eu
+        # pacman cannot switch to its download user under qemu-user emulation.
+        sed -i "s/^DownloadUser = alpm/#DownloadUser = alpm/" /etc/pacman.conf
+        sed -i "s/^#DisableSandboxSyscalls/DisableSandboxSyscalls/" /etc/pacman.conf
+        pacman -Syu --noconfirm --needed --disable-download-timeout \
+            base-devel qt6-base qt6-declarative qt6-wayland
+        BUILD_DIR=/out /src/bin/build
+    '; then
+    echo "x86_64 build failed. Under emulation, prefer an x86_64 host or CI runner." >&2
+    exit 1
+fi
+
+echo "Built ${OUT}/omasports"

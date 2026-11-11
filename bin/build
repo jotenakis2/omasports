@@ -3,12 +3,13 @@
 set -eu
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
-mkdir -p "${ROOT}/build"
-cd "${ROOT}/build"
+BUILD_DIR="${BUILD_DIR:-${ROOT}/build}"
+mkdir -p "${BUILD_DIR}"
+cd "${BUILD_DIR}"
 
 CORES="$(nproc)"
 
 qmake6 "${ROOT}/omasports.pro"
 make -j"${CORES}"
 
-echo "Built ${ROOT}/build/omasports"
+echo "Built ${BUILD_DIR}/omasports"
