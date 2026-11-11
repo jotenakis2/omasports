@@ -114,6 +114,7 @@ Item {
                 delegate: Item {
                     id: choiceRow
                     required property var modelData
+                    required property int index
                     readonly property bool sport: modelData.type === "sport"
                     readonly property bool checked: sport ? modelData.allEnabled : modelData.enabled
                     readonly property bool partial: sport && modelData.enabledCount > 0
@@ -123,11 +124,15 @@ Item {
                     height: sport ? 38 : 34
 
                     Rectangle {
-                        visible: choiceRow.sport
+                        // The section separator already sits above the first
+                        // sport; only later groups need their own lighter rule.
+                        visible: choiceRow.sport && choiceRow.index > 0
                         anchors.top: parent.top
-                        width: parent.width - 6
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: parent.width - 24
                         height: 1
                         color: theme.line
+                        opacity: 0.35
                     }
 
                     Rectangle {

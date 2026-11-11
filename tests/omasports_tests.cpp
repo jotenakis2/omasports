@@ -382,6 +382,9 @@ private slots:
         QVERIFY(!qml.contains(QStringLiteral("qsTr(\"Hide all\")")));
         // Long translations wrap instead of overflowing the settings card.
         QVERIFY(qml.lastIndexOf(QStringLiteral("Flow {"), show) > list);
+        // Sport dividers stay lighter than the main section separators.
+        QVERIFY(qml.contains(QStringLiteral("visible: choiceRow.sport && choiceRow.index > 0")));
+        QVERIFY(qml.contains(QStringLiteral("opacity: 0.35")));
 
         // Toggling a row replaces the model; the scroll offset is restored.
         QVERIFY(qml.contains(QStringLiteral("choices.contentY")));
