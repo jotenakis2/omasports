@@ -1,0 +1,61 @@
+name: Linux builds
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Linux ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qt6-base-dev \
+            qt6-declarative-dev \
+            qt6-wayland \
+            qt6-wayland-dev \
+            qt6-tools-dev
+
+      - name: Build
+        run: |
+          mkdir -p build
+          cd build
+          qmake6 ../omasports.pro
+          make -j"$(nproc)"
+
+      - name: Package
+        run: |
+          set -eu
+          name="omasports-linux-${{ matrix.arch }}"
+          mkdir -p "dist/${name}"
+          install -m755 build/omasports "dist/${name}/omasports"
+          install -m644 LICENSE README.md "dist/${name}/"
+          install -m644 pkgbuild/omasports.desktop pkgbuild/omasports.svg "dist/${name}/"
+          tar -C dist -czf "${name}.tar.gz" "${name}"
+
+      - name: Upload archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: omasports-linux-${{ matrix.arch }}
+          path: omasports-linux-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
