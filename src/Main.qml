@@ -33,13 +33,13 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequence: "j"
+        sequences: ["j", "Shift+J"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: win.stepLeague(1)
     }
     Shortcut {
-        sequence: "k"
+        sequences: ["k", "Shift+K"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: win.stepLeague(-1)
@@ -57,13 +57,13 @@ ApplicationWindow {
         onActivated: win.stepLeague(-1)
     }
     Shortcut {
-        sequence: "h"
+        sequences: ["h", "Shift+H"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.previousDay()
     }
     Shortcut {
-        sequence: "l"
+        sequences: ["l", "Shift+L"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.nextDay()
@@ -81,37 +81,37 @@ ApplicationWindow {
         onActivated: backend.nextDay()
     }
     Shortcut {
-        sequence: "t"
+        sequences: ["t", "Shift+T"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen && !backend.liveMode && !backend.standingsVisible
         onActivated: backend.today()
     }
     Shortcut {
-        sequence: "d"
+        sequences: ["d", "Shift+D"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.toggleLive()
     }
     Shortcut {
-        sequence: "c"
+        sequences: ["c", "Shift+C"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.toggleStandings()
     }
     Shortcut {
-        sequence: "a"
+        sequences: ["a", "Shift+A"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.toggleUpcoming()
     }
     Shortcut {
-        sequence: "s"
+        sequences: ["s", "Shift+S"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !backend.matchOpen
         onActivated: win.settingsVisible = !win.settingsVisible
     }
     Shortcut {
-        sequence: "r"
+        sequences: ["r", "Shift+R"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: backend.refresh()
@@ -129,7 +129,7 @@ ApplicationWindow {
         onActivated: sidebar.focusSearch()
     }
     Shortcut {
-        sequence: "q"
+        sequences: ["q", "Shift+Q"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
         onActivated: Qt.quit()
@@ -586,43 +586,43 @@ ApplicationWindow {
                 spacing: 8
 
                 Text {
-                    text: qsTr("? Help")
+                    text: qsTr("? help")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("J / K league")
+                    text: qsTr("j / k league")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("H / L day")
+                    text: qsTr("h / l day")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("D live")
+                    text: qsTr("d live")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("C standings")
+                    text: qsTr("c standings")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("A upcoming")
+                    text: qsTr("a upcoming")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("S leagues")
+                    text: qsTr("s leagues")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }

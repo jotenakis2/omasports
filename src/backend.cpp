@@ -277,13 +277,20 @@ Backend::Backend(const QString &settingsPath, bool online, QObject *parent)
 
     m_standingsHeaders = standingsHeadersFor(this->league().value("sport").toString());
 
-    m_fontScaleLevel = qBound(0, settings.value("ui/fontScale", 1).toInt(), 2);
+    // Font size levels: 0 Petit, 1 Compact, 2 Normal, 3 Grand, 4 Très Grand.
+    // Older releases stored 0 Compact, 1 Normal, 2 Large; shift those once so
+    // an existing choice keeps its apparent size after the upgrade.
+    int level = settings.value("ui/fontScale", 2).toInt();
+    if (settings.contains("ui/fontScale") && !settings.contains("ui/fontScaleVersion"))
+        level += 1;
+    m_fontScaleLevel = qBound(0, level, 4);
 
     // Persist the normalized list, including an empty one, so "none" survives
     // the next launch instead of falling back to every league.
     settings.setValue("leagues/enabled", enabledLeagues());
     settings.setValue("leagues/known", allLeagueKeys());
     settings.setValue("ui/fontScale", m_fontScaleLevel);
+    settings.setValue("ui/fontScaleVersion", 2);
 }
 
 QVariantMap Backend::league() const
@@ -360,22 +367,27 @@ qreal Backend::fontScale() const
 {
     switch (m_fontScaleLevel) {
     case 0:
-        return 0.9;
-    case 2:
-        return 1.2;
+        return 0.8; // Petit
+    case 1:
+        return 0.9; // Compact
+    case 3:
+        return 1.2; // Grand
+    case 4:
+        return 1.4; // Très Grand
     default:
-        return 1.0;
+        return 1.0; // Normal
     }
 }
 
 void Backend::setFontScale(int level)
 {
-    level = qBound(0, level, 2);
+    level = qBound(0, level, 4);
     if (level == m_fontScaleLevel)
         return;
     m_fontScaleLevel = level;
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     settings.setValue("ui/fontScale", m_fontScaleLevel);
+    settings.setValue("ui/fontScaleVersion", 2);
     emit fontScaleChanged();
 }
 

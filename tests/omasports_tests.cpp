@@ -1412,16 +1412,80 @@ private slots:
         const QString settings = dir.filePath("settings.ini");
         {
             Backend backend(settings, false);
-            QCOMPARE(backend.fontScaleLevel(), 1);
-            backend.setFontScale(2);
             QCOMPARE(backend.fontScaleLevel(), 2);
-            QCOMPARE(backend.fontScale(), 1.2);
+            QCOMPARE(backend.fontScale(), 1.0);
+            backend.setFontScale(4);
+            QCOMPARE(backend.fontScaleLevel(), 4);
+            QCOMPARE(backend.fontScale(), 1.4);
         }
         {
             Backend reopened(settings, false);
-            QCOMPARE(reopened.fontScaleLevel(), 2);
-            QCOMPARE(reopened.fontScale(), 1.2);
+            QCOMPARE(reopened.fontScaleLevel(), 4);
+            QCOMPARE(reopened.fontScale(), 1.4);
         }
+    }
+
+    void fontScaleHasFiveOrderedLevels()
+    {
+        QTemporaryDir dir;
+        Backend backend(dir.filePath("settings.ini"), false);
+
+        const QList<qreal> expected = {0.8, 0.9, 1.0, 1.2, 1.4};
+        for (int level = 0; level < expected.size(); ++level) {
+            backend.setFontScale(level);
+            QCOMPARE(backend.fontScaleLevel(), level);
+            QCOMPARE(backend.fontScale(), expected.at(level));
+            if (level > 0)
+                QVERIFY(backend.fontScale() > expected.at(level - 1));
+        }
+        backend.setFontScale(9);
+        QCOMPARE(backend.fontScaleLevel(), 4);
+        backend.setFontScale(-3);
+        QCOMPARE(backend.fontScaleLevel(), 0);
+    }
+
+    void fontScaleMigratesTheOldThreeLevels()
+    {
+        for (int oldLevel = 0; oldLevel <= 2; ++oldLevel) {
+            QTemporaryDir dir;
+            const QString settings = dir.filePath("settings.ini");
+            QSettings store(settings, QSettings::IniFormat);
+            store.setValue("ui/fontScale", oldLevel);
+            store.sync();
+
+            Backend backend(settings, false);
+            QCOMPARE(backend.fontScaleLevel(), oldLevel + 1);
+        }
+    }
+
+    void shortcutsShowLowercaseAndAcceptShiftedLetters()
+    {
+        QFile mainFile(QStringLiteral(SRCDIR "/../src/Main.qml"));
+        if (!mainFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            mainFile.setFileName(QStringLiteral("src/Main.qml"));
+        QVERIFY2(mainFile.isOpen() || mainFile.open(QIODevice::ReadOnly | QIODevice::Text),
+                 "cannot open Main.qml");
+        const QString main = QString::fromUtf8(mainFile.readAll());
+        QVERIFY(main.contains("qsTr(\"j / k league\")"));
+        QVERIFY(main.contains("qsTr(\"h / l day\")"));
+        QVERIFY(main.contains("qsTr(\"d live\")"));
+        QVERIFY(main.contains("qsTr(\"c standings\")"));
+        QVERIFY(main.contains("qsTr(\"a upcoming\")"));
+        QVERIFY(main.contains("qsTr(\"s leagues\")"));
+        QVERIFY(main.contains("qsTr(\"? help\")"));
+        QVERIFY(main.contains("sequences: [\"j\", \"Shift+J\"]"));
+        QVERIFY(main.contains("sequences: [\"q\", \"Shift+Q\"]"));
+        QVERIFY(!main.contains("sequence: \"J\""));
+
+        QFile helpFile(QStringLiteral(SRCDIR "/../src/HelpOverlay.qml"));
+        if (!helpFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            helpFile.setFileName(QStringLiteral("src/HelpOverlay.qml"));
+        QVERIFY2(helpFile.isOpen() || helpFile.open(QIODevice::ReadOnly | QIODevice::Text),
+                 "cannot open HelpOverlay.qml");
+        const QString help = QString::fromUtf8(helpFile.readAll());
+        QVERIFY(help.contains("{ keys: \"j / k\""));
+        QVERIFY(help.contains("{ keys: \"h / l\""));
+        QVERIFY(help.contains("{ keys: \"q\""));
     }
 
     void upcomingScheduleFiltersSortsAndGroups()

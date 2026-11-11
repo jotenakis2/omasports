@@ -67,20 +67,23 @@ Adjust `Exec=` in the `.desktop` file if the binary lives somewhere other than
 
 ## Keys
 
+Keys are shown lowercase; uppercase letters work too.
+
 | Key | Action |
 | --- | --- |
-| `D` | Live view: every game in progress |
-| `C` | Standings for the selected league |
+| `d` | Live view: every game in progress |
+| `c` | Standings for the selected league |
+| `a` | Upcoming matches for the selected league |
 | Click a match | Open its sheet |
-| `S` | Choose which leagues to show |
-| `J` / `K`, `↓` / `↑` | Next / previous league |
-| `H` / `L`, `←` / `→` | Previous / next day |
-| `T` | Back to today |
-| `Space`, `R` | Refresh scores |
+| `s` | Choose which leagues to show |
+| `j` / `k`, `↓` / `↑` | Next / previous league |
+| `h` / `l`, `←` / `→` | Previous / next day |
+| `t` | Back to today |
+| `space`, `r` | Refresh scores |
 | `/` | Search leagues |
 | `?` | Show every shortcut |
-| `Esc` | Close the help or settings, or clear the search |
-| `Q` | Quit |
+| `esc` | Close the help or settings, or clear the search |
+| `q` | Quit |
 
 ## Languages
 

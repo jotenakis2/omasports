@@ -199,29 +199,39 @@ Item {
                     font.bold: true
                 }
 
-                RowLayout {
+                Flow {
                     Layout.fillWidth: true
                     spacing: 8
 
                     ActionButton {
-                        text: qsTr("Compact")
+                        text: qsTr("Small")
                         primary: backend.fontScaleLevel === 0
                         onClicked: backend.setFontScale(0)
                     }
 
                     ActionButton {
-                        text: qsTr("Normal")
+                        text: qsTr("Compact")
                         primary: backend.fontScaleLevel === 1
                         onClicked: backend.setFontScale(1)
                     }
 
                     ActionButton {
-                        text: qsTr("Large")
+                        text: qsTr("Normal")
                         primary: backend.fontScaleLevel === 2
                         onClicked: backend.setFontScale(2)
                     }
 
-                    Item { Layout.fillWidth: true }
+                    ActionButton {
+                        text: qsTr("Large")
+                        primary: backend.fontScaleLevel === 3
+                        onClicked: backend.setFontScale(3)
+                    }
+
+                    ActionButton {
+                        text: qsTr("Very large")
+                        primary: backend.fontScaleLevel === 4
+                        onClicked: backend.setFontScale(4)
+                    }
                 }
             }
 

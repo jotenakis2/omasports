@@ -10,17 +10,17 @@ Item {
         translator.language
         return [
             { keys: "?", action: qsTr("Show this help") },
-            { keys: "J / K", action: qsTr("Next / previous league") },
-            { keys: "H / L", action: qsTr("Previous / next day") },
-            { keys: "T", action: qsTr("Back to today") },
-            { keys: "Space / R", action: qsTr("Refresh scores") },
+            { keys: "j / k", action: qsTr("Next / previous league") },
+            { keys: "h / l", action: qsTr("Previous / next day") },
+            { keys: "t", action: qsTr("Back to today") },
+            { keys: "space / r", action: qsTr("Refresh scores") },
             { keys: "/", action: qsTr("Search leagues") },
-            { keys: "D", action: qsTr("All live scores") },
-            { keys: "C", action: qsTr("Standings") },
-            { keys: "A", action: qsTr("Upcoming matches") },
-            { keys: "S", action: qsTr("Choose leagues") },
-            { keys: "Esc", action: qsTr("Close") },
-            { keys: "Q", action: qsTr("Quit") }
+            { keys: "d", action: qsTr("All live scores") },
+            { keys: "c", action: qsTr("Standings") },
+            { keys: "a", action: qsTr("Upcoming matches") },
+            { keys: "s", action: qsTr("Choose leagues") },
+            { keys: "esc", action: qsTr("Close") },
+            { keys: "q", action: qsTr("Quit") }
         ]
     }
 

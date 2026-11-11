@@ -178,7 +178,7 @@ Item {
 
         Text {
             Layout.fillWidth: true
-            text: qsTr("Press R to retry.")
+            text: qsTr("Press r to retry.")
             color: theme.mutedForeground
             font.pixelSize: theme.fsSmall
             horizontalAlignment: Text.AlignHCenter

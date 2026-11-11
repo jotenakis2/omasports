@@ -218,7 +218,7 @@ private:
     int m_leagueIndex = 0;
     int m_dayOffset = 0;
     int m_liveCount = 0;
-    int m_fontScaleLevel = 1;
+    int m_fontScaleLevel = 2;
     bool m_liveMode = false;
     bool m_standingsVisible = false;
     bool m_standingsSeasonUncertain = false;
