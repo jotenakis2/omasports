@@ -175,10 +175,10 @@ private:
             if (names.isEmpty() || scores.isEmpty())
                 continue;
             RowGeom row;
-            row.scoreX = scores.first()->mapToItem(card, 0, 0).x();
-            row.scoreY = scores.first()->mapToItem(card, 0, 0).y();
+            row.scoreX = scores.first()->mapToItem(card, QPointF(0, 0)).x();
+            row.scoreY = scores.first()->mapToItem(card, QPointF(0, 0)).y();
             row.scoreWidth = scores.first()->width();
-            row.nameY = names.first()->mapToItem(card, 0, 0).y();
+            row.nameY = names.first()->mapToItem(card, QPointF(0, 0)).y();
             row.scoreBaselineY = row.scoreY + scores.first()->property("baselineOffset").toReal();
             row.nameBaselineY = row.nameY + names.first()->property("baselineOffset").toReal();
             rows.append(row);
@@ -514,9 +514,9 @@ void EventCardGeometryTests::dayNavigationStaysFixed()
         QVERIFY(todayButton->opacity() > 0.99);
         QVERIFY(todayButton->property("primary").toBool());
 
-        const qreal dateXToday = dateText->mapToItem(root, 0, 0).x();
-        const qreal prevXToday = prevButton->mapToItem(root, 0, 0).x();
-        const qreal nextXToday = nextButton->mapToItem(root, 0, 0).x();
+        const qreal dateXToday = dateText->mapToItem(root, QPointF(0, 0)).x();
+        const qreal prevXToday = prevButton->mapToItem(root, QPointF(0, 0)).x();
+        const qreal nextXToday = nextButton->mapToItem(root, QPointF(0, 0)).x();
         const qreal baseWidth = dateText->width();
         const qreal baseHeight = dateText->height();
         qInfo().noquote() << "daynav scale" << scale << "today dateX" << dateXToday << "prevX" << prevXToday << "nextX" << nextXToday
@@ -529,9 +529,9 @@ void EventCardGeometryTests::dayNavigationStaysFixed()
         settle(view);
         QVERIFY(!todayButton->property("primary").toBool());
 
-        const qreal dateXOther = dateText->mapToItem(root, 0, 0).x();
-        const qreal prevXOther = prevButton->mapToItem(root, 0, 0).x();
-        const qreal nextXOther = nextButton->mapToItem(root, 0, 0).x();
+        const qreal dateXOther = dateText->mapToItem(root, QPointF(0, 0)).x();
+        const qreal prevXOther = prevButton->mapToItem(root, QPointF(0, 0)).x();
+        const qreal nextXOther = nextButton->mapToItem(root, QPointF(0, 0)).x();
         qInfo().noquote() << "daynav scale" << scale << "other dateX" << dateXOther << "prevX" << prevXOther << "nextX" << nextXOther;
 
         QVERIFY2(qAbs(dateXToday - dateXOther) <= 1.0,
