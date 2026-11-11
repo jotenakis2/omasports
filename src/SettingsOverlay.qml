@@ -235,6 +235,37 @@ Item {
                 }
             }
 
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 6
+
+                Text {
+                    text: qsTr("League logos")
+                    color: theme.mutedForeground
+                    font.pixelSize: theme.fsSmall
+                    font.bold: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ActionButton {
+                        text: qsTr("Sidebar logos")
+                        primary: backend.sidebarLogos
+                        onClicked: backend.setSidebarLogos(!backend.sidebarLogos)
+                    }
+
+                    ActionButton {
+                        text: qsTr("Header logos")
+                        primary: backend.headerLogos
+                        onClicked: backend.setHeaderLogos(!backend.headerLogos)
+                    }
+
+                    Item { Layout.fillWidth: true }
+                }
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1

@@ -48,6 +48,8 @@ class Backend : public QObject {
     Q_PROPERTY(QVariantMap match READ match NOTIFY matchChanged)
     Q_PROPERTY(int fontScaleLevel READ fontScaleLevel NOTIFY fontScaleChanged)
     Q_PROPERTY(qreal fontScale READ fontScale NOTIFY fontScaleChanged)
+    Q_PROPERTY(bool sidebarLogos READ sidebarLogos NOTIFY logoOptionsChanged)
+    Q_PROPERTY(bool headerLogos READ headerLogos NOTIFY logoOptionsChanged)
 
 public:
     // Tests construct the backend offline so selection and navigation never
@@ -82,6 +84,8 @@ public:
     QVariantMap match() const { return m_match; }
     int fontScaleLevel() const { return m_fontScaleLevel; }
     qreal fontScale() const;
+    bool sidebarLogos() const { return m_sidebarLogos; }
+    bool headerLogos() const { return m_headerLogos; }
     QDate date() const { return QDate::currentDate().addDays(m_dayOffset); }
 
     Q_INVOKABLE void selectLeague(int index);
@@ -108,6 +112,8 @@ public:
     Q_INVOKABLE void setSportLeaguesEnabled(const QString &sport, bool enabled);
     Q_INVOKABLE void setAllLeaguesEnabled(bool enabled);
     Q_INVOKABLE void setFontScale(int level);
+    Q_INVOKABLE void setSidebarLogos(bool visible);
+    Q_INVOKABLE void setHeaderLogos(bool visible);
 
     // "3-1-5" read as a season record: 3V · 1N · 5D for soccer, 8V · 3D · 2OT
     // for hockey, and so on. Letters come from the Omarchy language.
@@ -163,6 +169,7 @@ signals:
     void upcomingChanged();
     void matchChanged();
     void fontScaleChanged();
+    void logoOptionsChanged();
 
 private:
     struct LiveTask {
@@ -219,6 +226,8 @@ private:
     int m_dayOffset = 0;
     int m_liveCount = 0;
     int m_fontScaleLevel = 2;
+    bool m_sidebarLogos = true;
+    bool m_headerLogos = true;
     bool m_liveMode = false;
     bool m_standingsVisible = false;
     bool m_standingsSeasonUncertain = false;

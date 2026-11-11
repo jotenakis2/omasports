@@ -21,6 +21,11 @@ ApplicationWindow {
     property bool helpVisible: false
     property bool settingsVisible: false
     readonly property bool noLeagues: backend.enabledLeagues.length === 0
+    readonly property string leagueLogo: {
+        var light = backend.league.logo || ""
+        var dark = backend.league.logoDark || light
+        return theme.dark ? dark : light
+    }
 
     function stepLeague(delta) {
         sidebar.step(delta)
@@ -293,15 +298,33 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         spacing: 3
 
-                        Text {
+                        RowLayout {
                             Layout.fillWidth: true
-                            text: backend.liveMode ? qsTr("Live")
-                                  : win.noLeagues ? qsTr("Leagues")
-                                  : backend.league.name || ""
-                            color: theme.foreground
-                            font.pixelSize: theme.fsTitle
-                            font.bold: true
-                            elide: Text.ElideRight
+                            spacing: 10
+
+                            Image {
+                                visible: backend.headerLogos && !backend.liveMode
+                                         && !win.noLeagues && win.leagueLogo.length > 0
+                                source: win.leagueLogo
+                                Layout.preferredWidth: theme.fsTitle + 4
+                                Layout.preferredHeight: theme.fsTitle + 4
+                                fillMode: Image.PreserveAspectFit
+                                smooth: true
+                                asynchronous: true
+                                sourceSize.width: 96
+                                sourceSize.height: 96
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: backend.liveMode ? qsTr("Live")
+                                      : win.noLeagues ? qsTr("Leagues")
+                                      : backend.league.name || ""
+                                color: theme.foreground
+                                font.pixelSize: theme.fsTitle
+                                font.bold: true
+                                elide: Text.ElideRight
+                            }
                         }
 
                         Text {

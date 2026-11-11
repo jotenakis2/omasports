@@ -279,6 +279,88 @@ private slots:
         QVERIFY(sports.contains("tennis"));
     }
 
+    void leagueCatalogCarriesLightAndDarkLogos()
+    {
+        const QVariantList catalog = Backend::leagueCatalog();
+        bool foundLigue1 = false;
+        bool foundTop14 = false;
+        for (const auto &value : catalog) {
+            const QVariantMap entry = value.toMap();
+            const QString logo = entry.value("logo").toString();
+            const QString logoDark = entry.value("logoDark").toString();
+            QVERIFY2(logo.startsWith("https://"), qPrintable(entry.value("name").toString()));
+            QVERIFY2(logoDark.startsWith("https://"), qPrintable(entry.value("name").toString()));
+
+            const QString key = entry.value("sport").toString() + "/"
+                                + entry.value("league").toString();
+            if (key == QLatin1String("soccer/fra.1")) {
+                foundLigue1 = true;
+                QCOMPARE(logo, QStringLiteral("https://a.espncdn.com/i/leaguelogos/soccer/500/9.png"));
+                QCOMPARE(logoDark, QStringLiteral("https://a.espncdn.com/i/leaguelogos/soccer/500-dark/9.png"));
+            }
+            if (key == QLatin1String("rugby/270559")) {
+                foundTop14 = true;
+                QCOMPARE(logoDark, logo); // generic icon: dark falls back to light
+            }
+        }
+        QVERIFY(foundLigue1);
+        QVERIFY(foundTop14);
+    }
+
+    void logoOptionsDefaultOnAndPersist()
+    {
+        QTemporaryDir dir;
+        const QString settings = dir.filePath("settings.ini");
+        {
+            Backend backend(settings, false);
+            QVERIFY(backend.sidebarLogos());
+            QVERIFY(backend.headerLogos());
+
+            QSignalSpy spy(&backend, &Backend::logoOptionsChanged);
+            backend.setSidebarLogos(false);
+            QCOMPARE(spy.count(), 1);
+            QVERIFY(!backend.sidebarLogos());
+            QVERIFY(backend.headerLogos());
+
+            backend.setHeaderLogos(false);
+            QCOMPARE(spy.count(), 2);
+            QVERIFY(!backend.headerLogos());
+        }
+        {
+            Backend reopened(settings, false);
+            QVERIFY(!reopened.sidebarLogos());
+            QVERIFY(!reopened.headerLogos());
+        }
+    }
+
+    void leagueLogosAreUsedInSidebarHeaderAndSettings()
+    {
+        const auto readSource = [](const QString &relative) {
+            QFile file(QStringLiteral(SRCDIR "/../src/") + relative);
+            if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+                file.setFileName(QStringLiteral("src/") + relative);
+                if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+                    return QString();
+            }
+            return QString::fromUtf8(file.readAll());
+        };
+
+        const QString sidebar = readSource(QStringLiteral("LeagueSidebar.qml"));
+        QVERIFY(!sidebar.isEmpty());
+        QVERIFY(sidebar.contains("backend.sidebarLogos"));
+        QVERIFY(sidebar.contains("modelData.logoDark"));
+
+        const QString main = readSource(QStringLiteral("Main.qml"));
+        QVERIFY(!main.isEmpty());
+        QVERIFY(main.contains("backend.headerLogos"));
+        QVERIFY(main.contains("win.leagueLogo"));
+
+        const QString settings = readSource(QStringLiteral("SettingsOverlay.qml"));
+        QVERIFY(!settings.isEmpty());
+        QVERIFY(settings.contains("backend.setSidebarLogos"));
+        QVERIFY(settings.contains("backend.setHeaderLogos"));
+    }
+
     void scoreboardUrlCarriesSportLeagueAndDay()
     {
         const QUrl url = Backend::scoreboardUrl("soccer", "eng.1", QDate(2026, 11, 5));

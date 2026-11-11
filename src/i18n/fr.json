@@ -119,5 +119,8 @@
   "Loading schedule…": "Chargement du calendrier…",
   "Could not load schedule": "Impossible de charger le calendrier",
   "Press r to retry.": "Appuyez sur r pour réessayer.",
-  "No upcoming matches.": "Aucun match à venir"
+  "No upcoming matches.": "Aucun match à venir",
+  "League logos": "Logos des ligues",
+  "Sidebar logos": "Logos latéraux",
+  "Header logos": "Logos d’en-tête"
 }

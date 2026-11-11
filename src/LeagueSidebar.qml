@@ -254,6 +254,8 @@ Rectangle {
 
                     readonly property bool current: backend.leagueIndex === modelData.index
                                                      && !backend.liveMode
+                    readonly property bool hasLogo: backend.sidebarLogos
+                                                     && !!(modelData.logo || modelData.logoDark)
 
                     width: list.width
                     height: 34
@@ -282,9 +284,26 @@ Rectangle {
                         color: theme.accent
                     }
 
+                    Image {
+                        visible: row.hasLogo
+                        source: theme.dark
+                                ? (row.modelData.logoDark || row.modelData.logo || "")
+                                : (row.modelData.logo || row.modelData.logoDark || "")
+                        anchors.left: parent.left
+                        anchors.leftMargin: 18
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 18
+                        height: 18
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        asynchronous: true
+                        sourceSize.width: 48
+                        sourceSize.height: 48
+                    }
+
                     Text {
                         anchors.left: parent.left
-                        anchors.leftMargin: 20
+                        anchors.leftMargin: row.hasLogo ? 46 : 20
                         anchors.right: parent.right
                         anchors.rightMargin: 24
                         anchors.verticalCenter: parent.verticalCenter

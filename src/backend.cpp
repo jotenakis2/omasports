@@ -68,6 +68,65 @@ const CatalogEntry catalog[] = {
     {"australian-football", "Australian Football", "afl", "AFL"},
 };
 
+// League marks come from ESPN's scoreboard payloads (`leagues[0].logos`).
+// Some competitions only have a generic sport icon, which is still better
+// than an empty row; the dark variant falls back to the light one below.
+struct LeagueLogo {
+    const char *sport;
+    const char *league;
+    const char *light;
+    const char *dark;
+};
+
+const LeagueLogo leagueLogos[] = {
+    {"soccer", "eng.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/23.png"},
+    {"soccer", "esp.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/15.png"},
+    {"soccer", "ita.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/12.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/12.png"},
+    {"soccer", "ger.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/10.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/10.png"},
+    {"soccer", "fra.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/9.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/9.png"},
+    {"soccer", "uefa.champions", "https://a.espncdn.com/i/leaguelogos/soccer/500/2.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2.png"},
+    {"soccer", "uefa.europa", "https://a.espncdn.com/i/leaguelogos/soccer/500/2310.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2310.png"},
+    {"soccer", "usa.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/19.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png"},
+    {"soccer", "mex.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/22.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/22.png"},
+    {"soccer", "bra.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/85.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/85.png"},
+    {"soccer", "arg.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/1.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/1.png"},
+    {"soccer", "ned.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/11.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/11.png"},
+    {"soccer", "por.1", "https://a.espncdn.com/i/leaguelogos/soccer/500/14.png", "https://a.espncdn.com/i/leaguelogos/soccer/500-dark/14.png"},
+    {"football", "nfl", "https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png", "https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png"},
+    {"football", "college-football", "https://a.espncdn.com/redesign/assets/img/icons/NCAASports_Football.png", ""},
+    {"basketball", "nba", "https://a.espncdn.com/i/teamlogos/leagues/500/nba.png", "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/nba.png&w=500&h=500&transparent=true"},
+    {"basketball", "wnba", "https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png", "https://a.espncdn.com/i/teamlogos/leagues/500-dark/wnba.png"},
+    {"basketball", "mens-college-basketball", "https://a.espncdn.com/redesign/assets/img/icons/NCAASports_MensBasketball.png", ""},
+    {"baseball", "mlb", "https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png", "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/mlb.png&w=500&h=500&transparent=true"},
+    {"baseball", "college-baseball", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-baseball.png", ""},
+    {"hockey", "nhl", "https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png", "https://a.espncdn.com/i/teamlogos/leagues/500-dark/nhl.png"},
+    {"tennis", "atp", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-tennis.png", ""},
+    {"tennis", "wta", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-tennis.png", ""},
+    {"golf", "pga", "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/pgatour.png", "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/pgatour.png"},
+    {"golf", "lpga", "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/lpga.png", "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/lpga.png"},
+    {"mma", "ufc", "https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png", ""},
+    {"racing", "f1", "https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500/f1.png", ""},
+    {"racing", "nascar-premier", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-NASCAR.png", ""},
+    {"rugby", "270559", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-rugby.png", ""},
+    {"rugby", "180659", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-rugby.png", "https://a.espncdn.com/guid/3c68c9b2-7e7c-3a78-9f96-cb954d22809d/logos/default-dark.png"},
+    {"rugby", "164205", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-rugby.png", ""},
+    {"cricket", "8039", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-cricket.png", ""},
+    {"volleyball", "womens-college-volleyball", "https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/sports-volleyball-solid.png", ""},
+    {"australian-football", "afl", "https://a.espncdn.com/i/teamlogos/leagues/500/afl.png", ""},
+};
+
+QString leagueLogoUrl(const QString &sport, const QString &league, bool dark)
+{
+    for (const auto &entry : leagueLogos) {
+        if (sport != QLatin1String(entry.sport) || league != QLatin1String(entry.league))
+            continue;
+        if (dark && entry.dark && *entry.dark)
+            return QString::fromLatin1(entry.dark);
+        return QString::fromLatin1(entry.light);
+    }
+    return {};
+}
+
 QString defaultSettingsPath()
 {
     return QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/settings.ini";
@@ -285,12 +344,19 @@ Backend::Backend(const QString &settingsPath, bool online, QObject *parent)
         level += 1;
     m_fontScaleLevel = qBound(0, level, 4);
 
+    // League marks show in both places by default; Settings can turn either
+    // one off independently.
+    m_sidebarLogos = settings.value("ui/sidebarLogos", true).toBool();
+    m_headerLogos = settings.value("ui/headerLogos", true).toBool();
+
     // Persist the normalized list, including an empty one, so "none" survives
     // the next launch instead of falling back to every league.
     settings.setValue("leagues/enabled", enabledLeagues());
     settings.setValue("leagues/known", allLeagueKeys());
     settings.setValue("ui/fontScale", m_fontScaleLevel);
     settings.setValue("ui/fontScaleVersion", 2);
+    settings.setValue("ui/sidebarLogos", m_sidebarLogos);
+    settings.setValue("ui/headerLogos", m_headerLogos);
 }
 
 QVariantMap Backend::league() const
@@ -389,6 +455,26 @@ void Backend::setFontScale(int level)
     settings.setValue("ui/fontScale", m_fontScaleLevel);
     settings.setValue("ui/fontScaleVersion", 2);
     emit fontScaleChanged();
+}
+
+void Backend::setSidebarLogos(bool visible)
+{
+    if (visible == m_sidebarLogos)
+        return;
+    m_sidebarLogos = visible;
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    settings.setValue("ui/sidebarLogos", m_sidebarLogos);
+    emit logoOptionsChanged();
+}
+
+void Backend::setHeaderLogos(bool visible)
+{
+    if (visible == m_headerLogos)
+        return;
+    m_headerLogos = visible;
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    settings.setValue("ui/headerLogos", m_headerLogos);
+    emit logoOptionsChanged();
 }
 
 void Backend::selectLeague(int index)
@@ -1626,12 +1712,16 @@ QVariantList Backend::leagueCatalog()
     QVariantList leagues;
     int index = 0;
     for (const auto &entry : catalog) {
+        const QString sport = sportSlug(entry);
+        const QString leagueSlug = QString::fromLatin1(entry.league);
         QVariantMap league;
         league.insert("index", index++);
-        league.insert("sport", sportSlug(entry));
+        league.insert("sport", sport);
         league.insert("sportName", tr(entry.sportName));
-        league.insert("league", QString::fromLatin1(entry.league));
+        league.insert("league", leagueSlug);
         league.insert("name", QString::fromUtf8(entry.name));
+        league.insert("logo", leagueLogoUrl(sport, leagueSlug, false));
+        league.insert("logoDark", leagueLogoUrl(sport, leagueSlug, true));
         leagues.append(league);
     }
     return leagues;
