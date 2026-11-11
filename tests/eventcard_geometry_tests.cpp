@@ -507,10 +507,12 @@ void EventCardGeometryTests::dayNavigationStaysFixed()
         QVERIFY(prevButton);
         QVERIFY(nextButton);
         QVERIFY(todayButton);
-        // "Today" remains visible and usable even when the selected day is today.
+        // "Today" remains visible and usable even when the selected day is today,
+        // and it is highlighted only while that is actually the case.
         QVERIFY(todayButton->isVisible());
         QVERIFY(todayButton->isEnabled());
         QVERIFY(todayButton->opacity() > 0.99);
+        QVERIFY(todayButton->property("primary").toBool());
 
         const qreal dateXToday = dateText->mapToItem(root, 0, 0).x();
         const qreal prevXToday = prevButton->mapToItem(root, 0, 0).x();
@@ -525,6 +527,7 @@ void EventCardGeometryTests::dayNavigationStaysFixed()
 
         root->setProperty("isToday", false);
         settle(view);
+        QVERIFY(!todayButton->property("primary").toBool());
 
         const qreal dateXOther = dateText->mapToItem(root, 0, 0).x();
         const qreal prevXOther = prevButton->mapToItem(root, 0, 0).x();

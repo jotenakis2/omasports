@@ -47,7 +47,7 @@ RowLayout {
         id: todayButton
         objectName: "todayButton"
         text: qsTr("Today")
-        primary: true
+        primary: root.isToday
         onClicked: root.today()
     }
 }
