@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Linux ${{ matrix.arch }}
@@ -24,38 +28,41 @@ jobs:
             arch: arm64
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Install Qt
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
+            shellcheck \
             qt6-base-dev \
             qt6-declarative-dev \
             qt6-wayland \
             qt6-wayland-dev \
             qt6-tools-dev
 
-      - name: Build
-        run: |
-          mkdir -p build
-          cd build
-          qmake6 ../omasports.pro
-          make -j"$(nproc)"
+      - name: Build and test
+        run: ./check.sh
 
       - name: Package
+        if: github.event_name != 'pull_request'
         run: |
           set -eu
-          name="omasports-linux-${{ matrix.arch }}"
+          short_sha="$(printf '%s' "${GITHUB_SHA}" | cut -c1-7)"
+          name="omasports-${short_sha}-linux-${{ matrix.arch }}"
           mkdir -p "dist/${name}"
           install -m755 build/omasports "dist/${name}/omasports"
           install -m644 LICENSE README.md "dist/${name}/"
           install -m644 pkgbuild/omasports.desktop pkgbuild/omasports.svg "dist/${name}/"
           tar -C dist -czf "${name}.tar.gz" "${name}"
+          sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256"
 
       - name: Upload archive
-        uses: actions/upload-artifact@v4
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: omasports-linux-${{ matrix.arch }}
-          path: omasports-linux-${{ matrix.arch }}.tar.gz
+          name: omasports-${{ github.sha }}-linux-${{ matrix.arch }}
+          path: |
+            omasports-*-linux-${{ matrix.arch }}.tar.gz
+            omasports-*-linux-${{ matrix.arch }}.tar.gz.sha256
           if-no-files-found: error
