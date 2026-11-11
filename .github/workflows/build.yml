@@ -34,7 +34,10 @@ jobs:
         run: |
           export DEBIAN_FRONTEND=noninteractive
           # Un miroir lent ne doit pas bloquer le job : bornes de temps et reprises.
-          timeout 300 sudo -E apt-get update -o Acquire::Retries=5
+          # -o Acquire::ForceIPv4 : les runners bloquent parfois sur IPv6,
+          # ce qui fait pendre apt-get update jusqu'au timeout.
+          timeout 420 sudo -E apt-get update -o Acquire::ForceIPv4=true \
+            -o Acquire::Retries=5 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20
           # qmake6, make et g++ sont requis par bin/build
           timeout 600 sudo -E apt-get install -y --no-install-recommends \
             build-essential \
