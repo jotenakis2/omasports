@@ -30,6 +30,37 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Fix apt mirrors
+        run: |
+          set -eu
+          # Les runners GitHub pointent vers un miroir Azure dont le DNS tombe
+          # régulièrement. On choisit le premier miroir officiel qui répond.
+          if [ "$(uname -m)" = "aarch64" ]; then
+            candidates="http://ports.ubuntu.com/ubuntu-ports https://mirrors.edge.kernel.org/ubuntu-ports"
+          else
+            candidates="http://archive.ubuntu.com/ubuntu https://mirrors.edge.kernel.org/ubuntu"
+          fi
+          chosen=""
+          for base in ${candidates}; do
+            host="$(printf '%s' "${base}" | sed -E 's#^https?://([^/]+)/.*#\1#')"
+            printf 'essai %s (%s) ... ' "${host}" "${base}"
+            if getent hosts "${host}" >/dev/null 2>&1 &&
+               curl -fsSI --max-time 15 "${base}/dists/noble/InRelease" >/dev/null 2>&1; then
+              echo 'joignable'
+              chosen="${base}"
+              break
+            fi
+            echo 'injoignable'
+          done
+          if [ -z "${chosen}" ]; then
+            echo "aucun miroir Ubuntu joignable" >&2
+            exit 1
+          fi
+          sudo rm -f /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/*.sources /etc/apt/sources.list
+          printf 'deb %s noble main universe restricted multiverse\n' "${chosen}" | sudo tee /etc/apt/sources.list >/dev/null
+          printf 'deb %s noble-updates main universe restricted multiverse\ndeb %s noble-security main universe restricted multiverse\n' "${chosen}" "${chosen}" | sudo tee -a /etc/apt/sources.list >/dev/null
+          echo "miroir retenu : ${chosen}"
+
       - name: Install dependencies
         run: |
           export DEBIAN_FRONTEND=noninteractive
