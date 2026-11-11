@@ -182,6 +182,23 @@ Item {
                 }
             }
 
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+
+                ActionButton {
+                    text: qsTr("Show all leagues")
+                    onClicked: backend.setAllLeaguesEnabled(true)
+                }
+
+                ActionButton {
+                    text: qsTr("Hide all leagues")
+                    onClicked: backend.setAllLeaguesEnabled(false)
+                }
+
+                Item { Layout.fillWidth: true }
+            }
+
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
@@ -275,16 +292,6 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
-
-                ActionButton {
-                    text: qsTr("Show all")
-                    onClicked: backend.setAllLeaguesEnabled(true)
-                }
-
-                ActionButton {
-                    text: qsTr("Hide all")
-                    onClicked: backend.setAllLeaguesEnabled(false)
-                }
 
                 Item { Layout.fillWidth: true }
 

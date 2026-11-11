@@ -361,6 +361,27 @@ private slots:
         QVERIFY(settings.contains("backend.setHeaderLogos"));
     }
 
+    void leagueBulkActionsAreNamedAndGrouped()
+    {
+        QFile file(QStringLiteral(SRCDIR "/../src/SettingsOverlay.qml"));
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+            file.setFileName(QStringLiteral("src/SettingsOverlay.qml"));
+        QVERIFY2(file.isOpen() || file.open(QIODevice::ReadOnly | QIODevice::Text),
+                 "cannot open SettingsOverlay.qml");
+        const QString qml = QString::fromUtf8(file.readAll());
+
+        const int list = qml.indexOf(QStringLiteral("id: choices"));
+        const int show = qml.indexOf(QStringLiteral("qsTr(\"Show all leagues\")"));
+        const int hide = qml.indexOf(QStringLiteral("qsTr(\"Hide all leagues\")"));
+        const int close = qml.indexOf(QStringLiteral("qsTr(\"Close\")"));
+        QVERIFY(list >= 0);
+        QVERIFY(show > list);
+        QVERIFY(hide > show);
+        QVERIFY(close > hide);
+        QVERIFY(!qml.contains(QStringLiteral("qsTr(\"Show all\")")));
+        QVERIFY(!qml.contains(QStringLiteral("qsTr(\"Hide all\")")));
+    }
+
     void scoreboardUrlCarriesSportLeagueAndDay()
     {
         const QUrl url = Backend::scoreboardUrl("soccer", "eng.1", QDate(2026, 11, 5));
