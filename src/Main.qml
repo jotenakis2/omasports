@@ -111,6 +111,12 @@ ApplicationWindow {
         onActivated: win.settingsVisible = !win.settingsVisible
     }
     Shortcut {
+        sequences: ["p", "Shift+P"]
+        context: Qt.ApplicationShortcut
+        enabled: !sidebar.searching && !win.helpVisible && !backend.matchOpen
+        onActivated: win.settingsVisible = !win.settingsVisible
+    }
+    Shortcut {
         sequences: ["r", "Shift+R"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !win.settingsVisible && !backend.matchOpen
@@ -622,7 +628,7 @@ ApplicationWindow {
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("s leagues")
+                    text: qsTr("p / s settings")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }

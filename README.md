@@ -75,7 +75,7 @@ Keys are shown lowercase; uppercase letters work too.
 | `c` | Standings for the selected league |
 | `a` | Upcoming matches for the selected league |
 | Click a match | Open its sheet |
-| `s` | Choose which leagues to show |
+| `p` / `s` | Settings: choose which leagues to show, text size |
 | `j` / `k`, `↓` / `↑` | Next / previous league |
 | `h` / `l`, `←` / `→` | Previous / next day |
 | `t` | Back to today |
