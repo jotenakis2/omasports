@@ -203,7 +203,7 @@ Item {
                 }
             }
 
-            RowLayout {
+            Flow {
                 Layout.fillWidth: true
                 spacing: 8
 
@@ -216,8 +216,6 @@ Item {
                     text: qsTr("Hide all leagues")
                     onClicked: overlay.setAllLeagues(false)
                 }
-
-                Item { Layout.fillWidth: true }
             }
 
             Rectangle {
@@ -284,7 +282,7 @@ Item {
                     font.bold: true
                 }
 
-                RowLayout {
+                Flow {
                     Layout.fillWidth: true
                     spacing: 8
 
@@ -299,8 +297,6 @@ Item {
                         primary: backend.headerLogos
                         onClicked: backend.setHeaderLogos(!backend.headerLogos)
                     }
-
-                    Item { Layout.fillWidth: true }
                 }
             }
 
