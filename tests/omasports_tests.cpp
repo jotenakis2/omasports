@@ -1066,8 +1066,11 @@ private slots:
         Backend backend(dir.filePath("settings.ini"), false);
         QVERIFY(!backend.liveMode());
 
+        backend.nextDay();
+        QVERIFY(!backend.isToday());
         backend.setLive(true);
         QVERIFY(backend.liveMode());
+        QVERIFY(backend.isToday());
         QCOMPARE(backend.status(), QStringLiteral("idle"));
 
         backend.toggleLive();

@@ -525,6 +525,11 @@ void Backend::setLive(bool live)
         emit upcomingChanged();
     }
 
+    // Live scores are today's games, so the day picker shows today even when
+    // the user had browsed another day before opening the live view.
+    if (live)
+        m_dayOffset = 0;
+
     m_liveMode = live;
     m_events.clear();
     m_standings.clear();

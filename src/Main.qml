@@ -201,7 +201,10 @@ ApplicationWindow {
                 Item { Layout.fillWidth: true }
 
                 DayNavigation {
-                    visible: !backend.liveMode && !backend.standingsVisible && !backend.upcomingVisible
+                    // The day picker is irrelevant while a table or the
+                    // upcoming schedule is on screen, but it stays available in
+                    // the live view.
+                    visible: !backend.standingsVisible && !backend.upcomingVisible
                     dateLabel: backend.dateLabel
                     isToday: backend.isToday
                     onPrevious: backend.previousDay()

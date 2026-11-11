@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 
 // Day navigation row: previous, date label, next, Today.
-// "Today" stays in the layout at all times so the date box never moves.
+// The row and its Today button stay visible and usable in every view.
 RowLayout {
     id: root
 
@@ -48,8 +48,6 @@ RowLayout {
         objectName: "todayButton"
         text: qsTr("Today")
         primary: true
-        opacity: root.isToday ? 0 : 1
-        enabled: !root.isToday
         onClicked: root.today()
     }
 }

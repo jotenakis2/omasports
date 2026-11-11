@@ -502,9 +502,15 @@ void EventCardGeometryTests::dayNavigationStaysFixed()
         auto *dateText = root->findChild<QQuickItem *>(QStringLiteral("dateText"));
         auto *prevButton = root->findChild<QQuickItem *>(QStringLiteral("prevButton"));
         auto *nextButton = root->findChild<QQuickItem *>(QStringLiteral("nextButton"));
+        auto *todayButton = root->findChild<QQuickItem *>(QStringLiteral("todayButton"));
         QVERIFY(dateText);
         QVERIFY(prevButton);
         QVERIFY(nextButton);
+        QVERIFY(todayButton);
+        // "Today" remains visible and usable even when the selected day is today.
+        QVERIFY(todayButton->isVisible());
+        QVERIFY(todayButton->isEnabled());
+        QVERIFY(todayButton->opacity() > 0.99);
 
         const qreal dateXToday = dateText->mapToItem(root, 0, 0).x();
         const qreal prevXToday = prevButton->mapToItem(root, 0, 0).x();
