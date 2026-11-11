@@ -32,9 +32,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
+          export DEBIAN_FRONTEND=noninteractive
+          # Un miroir lent ne doit pas bloquer le job : bornes de temps et reprises.
+          timeout 300 sudo -E apt-get update -o Acquire::Retries=5
           # qmake6, make et g++ sont requis par bin/build
-          sudo apt-get install -y --no-install-recommends \
+          timeout 600 sudo -E apt-get install -y --no-install-recommends \
             build-essential \
             pkg-config \
             shellcheck \
