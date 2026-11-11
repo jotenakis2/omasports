@@ -361,7 +361,7 @@ private slots:
         QVERIFY(settings.contains("backend.setHeaderLogos"));
     }
 
-    void leagueBulkActionsAreNamedAndGrouped()
+    void leagueActionsStayGroupedAndKeepScrollPosition()
     {
         QFile file(QStringLiteral(SRCDIR "/../src/SettingsOverlay.qml"));
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
@@ -380,6 +380,11 @@ private slots:
         QVERIFY(close > hide);
         QVERIFY(!qml.contains(QStringLiteral("qsTr(\"Show all\")")));
         QVERIFY(!qml.contains(QStringLiteral("qsTr(\"Hide all\")")));
+
+        // Toggling a row replaces the model; the scroll offset is restored.
+        QVERIFY(qml.contains(QStringLiteral("choices.contentY")));
+        QVERIFY(qml.contains(QStringLiteral("overlay.toggleLeague")));
+        QVERIFY(qml.contains(QStringLiteral("overlay.toggleSport")));
     }
 
     void scoreboardUrlCarriesSportLeagueAndDay()

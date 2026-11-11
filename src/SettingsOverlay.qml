@@ -11,6 +11,27 @@ Item {
 
     signal closed()
 
+    // The backend replaces settingsRows on every toggle, which resets the
+    // ListView to the top. Keep the user on the row they just clicked.
+    function withPreservedScroll(action) {
+        var y = choices.contentY
+        action()
+        choices.contentY = y
+        Qt.callLater(function() { choices.contentY = y })
+    }
+
+    function toggleSport(sport, enabled) {
+        withPreservedScroll(function() { backend.setSportLeaguesEnabled(sport, enabled) })
+    }
+
+    function toggleLeague(sport, league, enabled) {
+        withPreservedScroll(function() { backend.setLeagueEnabled(sport, league, enabled) })
+    }
+
+    function setAllLeagues(enabled) {
+        withPreservedScroll(function() { backend.setAllLeaguesEnabled(enabled) })
+    }
+
     Material.theme: theme.dark ? Material.Dark : Material.Light
     Material.accent: theme.accent
     Material.roundedScale: theme.radius
@@ -170,12 +191,12 @@ Item {
                     TapHandler {
                         onTapped: {
                             if (choiceRow.sport) {
-                                backend.setSportLeaguesEnabled(choiceRow.modelData.sport,
-                                                               !choiceRow.modelData.allEnabled)
+                                overlay.toggleSport(choiceRow.modelData.sport,
+                                                    !choiceRow.modelData.allEnabled)
                             } else {
-                                backend.setLeagueEnabled(choiceRow.modelData.sport,
-                                                         choiceRow.modelData.league,
-                                                         !choiceRow.modelData.enabled)
+                                overlay.toggleLeague(choiceRow.modelData.sport,
+                                                     choiceRow.modelData.league,
+                                                     !choiceRow.modelData.enabled)
                             }
                         }
                     }
@@ -188,12 +209,12 @@ Item {
 
                 ActionButton {
                     text: qsTr("Show all leagues")
-                    onClicked: backend.setAllLeaguesEnabled(true)
+                    onClicked: overlay.setAllLeagues(true)
                 }
 
                 ActionButton {
                     text: qsTr("Hide all leagues")
-                    onClicked: backend.setAllLeaguesEnabled(false)
+                    onClicked: overlay.setAllLeagues(false)
                 }
 
                 Item { Layout.fillWidth: true }
