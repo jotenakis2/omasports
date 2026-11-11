@@ -211,7 +211,9 @@ sudo apt-get install --no-install-recommends \
   qt6-wayland qt6-wayland-dev qt6-tools-dev \
   qml6-module-qttest qml6-module-qtquick qml6-module-qtquick-window \
   qml6-module-qtquick-controls qml6-module-qtquick-templates \
-  qml6-module-qtquick-layouts libqt6quicktest6
+  qml6-module-qtquick-layouts \
+  qml6-module-qtqml qml6-module-qtqml-models qml6-module-qtqml-workerscript \
+  libqt6quicktest6
 ```
 
 The `qml6-module-*` packages provide the QML modules loaded at runtime by the
