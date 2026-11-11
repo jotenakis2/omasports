@@ -129,12 +129,12 @@ positions in an offscreen `QQuickView`), not by scanning QML source text.
 
 ### Build on Debian/Ubuntu
 
-The CI builds and tests on Ubuntu 24.04 with the packages below (in addition to
-`shellcheck` and the base Qt/Wayland development packages used by the
-workflow):
+The CI builds and tests on Ubuntu 24.04 with the packages below (qmake6, make
+and g++ are required by `bin/build`):
 
 ```sh
 sudo apt-get install --no-install-recommends \
+  build-essential pkg-config shellcheck \
   qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools \
   qt6-wayland qt6-wayland-dev qt6-tools-dev \
   qml6-module-qttest qml6-module-qtquick qml6-module-qtquick-window \
