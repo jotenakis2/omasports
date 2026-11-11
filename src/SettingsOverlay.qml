@@ -38,8 +38,8 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        color: theme.background
-        opacity: 0.82
+        color: "#000000"
+        opacity: 0.35
 
         MouseArea {
             anchors.fill: parent
@@ -53,8 +53,14 @@ Item {
         height: Math.min(620, parent.height - 64)
         radius: theme.radius
         color: theme.card
+        opacity: 1.0
         border.width: 1
         border.color: theme.line
+
+        // Empêche les clics dans le panneau de traverser vers le voile.
+        MouseArea {
+            anchors.fill: parent
+        }
 
         ColumnLayout {
             anchors.fill: parent
