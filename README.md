@@ -127,6 +127,26 @@ never touch the network: `Backend` takes an offline flag for exactly that. The
 `EventCard` score column alignment is verified by geometry tests (measured item
 positions in an offscreen `QQuickView`), not by scanning QML source text.
 
+### Build on Debian/Ubuntu
+
+The CI builds and tests on Ubuntu 24.04 with the packages below (in addition to
+`shellcheck` and the base Qt/Wayland development packages used by the
+workflow):
+
+```sh
+sudo apt-get install --no-install-recommends \
+  qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools \
+  qt6-wayland qt6-wayland-dev qt6-tools-dev \
+  qml6-module-qttest qml6-module-qtquick qml6-module-qtquick-window \
+  qml6-module-qtquick-controls qml6-module-qtquick-templates \
+  qml6-module-qtquick-layouts libqt6quicktest6
+```
+
+The `qml6-module-*` packages provide the QML modules loaded at runtime by the
+tests (including `QtQuick` and `QtTest`) and by the Qt Quick components
+(`EventCard.qml`, `DayNavigation.qml`, etc.). `libqt6quicktest6` provides the
+Quick Test runtime linked by `QT += quicktest`.
+
 Adding a league is one line in the `catalog` table in `src/backend.cpp`, using
 ESPN's sport and league slugs. Its scoreboard lives at
 `https://site.api.espn.com/apis/site/v2/sports/<sport>/<league>/scoreboard`.

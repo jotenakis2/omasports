@@ -37,9 +37,27 @@ jobs:
             shellcheck \
             qt6-base-dev \
             qt6-declarative-dev \
+            qt6-declarative-dev-tools \
             qt6-wayland \
             qt6-wayland-dev \
-            qt6-tools-dev
+            qt6-tools-dev \
+            qml6-module-qttest \
+            qml6-module-qtquick \
+            qml6-module-qtquick-window \
+            qml6-module-qtquick-controls \
+            qml6-module-qtquick-templates \
+            qml6-module-qtquick-layouts \
+            libqt6quicktest6
+
+      - name: QML diagnostic
+        run: |
+          QML_DIR="$(qtpaths6 --query QT_INSTALL_QML)"
+          echo "QT_INSTALL_QML=${QML_DIR}"
+          ls "${QML_DIR}"
+          echo "--- QtQuick ---"
+          ls "${QML_DIR}/QtQuick" || true
+          echo "--- QtTest ---"
+          ls "${QML_DIR}/QtTest" || true
 
       - name: Build and test
         run: ./check.sh
