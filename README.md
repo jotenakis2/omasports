@@ -98,20 +98,17 @@ add one, copy `src/i18n/fr.json`, translate the values, and add the file to
 
 ```sh
 bin/build        # qmake6 + make into build/omasports
-bin/build-x86_64 # x86_64 binary in build-x86_64/omasports
 bin/test         # Qt Test suite, offscreen
 ./check.sh       # shellcheck (bin/*, check.sh), compilation, puis tests offscreen
-bin/clean        # supprime build/, build-x86_64/ et dist/
+bin/clean        # supprime build/ et dist/
 ```
 
 Après un build local, lancer `bin/clean` pour ne rien laisser en local : les
 archives distributables doivent provenir de la CI, pas de la machine.
 
-`bin/build-x86_64` builds natively on an x86_64 host. From an aarch64 host it
-uses an x86_64 Arch container through podman and writes
-`build-x86_64/omasports`; `OMASPORTS_BUILD_IMAGE` overrides the container image.
-QEMU emulation can be slow or hit toolchain limits, so a native x86_64 host or
-CI runner is the reliable route. Set `BUILD_DIR` to send a normal `bin/build`
+There is deliberately no local cross-architecture build: the x86_64 and arm64
+archives are produced by the CI workflow and nothing is built outside the
+native host. Set `BUILD_DIR` to send a normal `bin/build`
 somewhere other than `build/`.
 
 Running the tests requires Qt Test and Qt Quick Test (module QML `QtTest` and
@@ -154,7 +151,7 @@ ESPN's sport and league slugs. Its scoreboard lives at
 ## Layout
 
 ```text
-bin/build  bin/build-x86_64  bin/test  bin/install  bin/clean
+bin/build  bin/test  bin/install  bin/clean
 src/main.cpp            application setup
 src/backend.{h,cpp}     catalog, scores, live scan, league filter, settings
 src/theme.{h,cpp}       Omarchy palette and Hyprland rounding
