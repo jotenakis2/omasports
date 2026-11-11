@@ -105,12 +105,6 @@ ApplicationWindow {
         onActivated: backend.toggleUpcoming()
     }
     Shortcut {
-        sequences: ["s", "Shift+S"]
-        context: Qt.ApplicationShortcut
-        enabled: !sidebar.searching && !win.helpVisible && !backend.matchOpen
-        onActivated: win.settingsVisible = !win.settingsVisible
-    }
-    Shortcut {
         sequences: ["p", "Shift+P"]
         context: Qt.ApplicationShortcut
         enabled: !sidebar.searching && !win.helpVisible && !backend.matchOpen
@@ -628,7 +622,7 @@ ApplicationWindow {
                 }
                 Text { text: "·"; color: theme.line; font.pixelSize: theme.fsSmall }
                 Text {
-                    text: qsTr("p / s settings")
+                    text: qsTr("p settings")
                     color: theme.mutedForeground
                     font.pixelSize: theme.fsSmall
                 }

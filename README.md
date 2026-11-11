@@ -26,8 +26,9 @@ Live scores and fixtures for every sport, in one window, from the keyboard.
 
   ![omasports showing Ligue 1 standings](screenshot-standings.png)
 
-- A **Sports and leagues** menu (`S`) chooses which leagues appear in the
-  sidebar and in the live view; the choice is remembered across launches.
+- A **Settings** menu (`P`) chooses which leagues appear in the sidebar and in
+  the live view, and sets the text size; the league choice is remembered across
+  launches.
 - A "Today" button and day-by-day navigation, so yesterday's results are one
   key away.
 - Season records read like `3V · 1N · 5D` in French and `3W · 1D · 5L` in
@@ -75,7 +76,7 @@ Keys are shown lowercase; uppercase letters work too.
 | `c` | Standings for the selected league |
 | `a` | Upcoming matches for the selected league |
 | Click a match | Open its sheet |
-| `p` / `s` | Settings: choose which leagues to show, text size |
+| `p` | Settings: choose which leagues to show, text size |
 | `j` / `k`, `↓` / `↑` | Next / previous league |
 | `h` / `l`, `←` / `→` | Previous / next day |
 | `t` | Back to today |
@@ -134,7 +135,7 @@ src/MatchOverlay.qml    the match sheet
 src/TeamBadge.qml       crest with an abbreviation fallback
 src/ActionButton.qml    flat theme-following button
 src/LogoMark.qml        the score-bar mark, in the live accent
-src/SettingsOverlay.qml the sports and leagues checklist
+src/SettingsOverlay.qml the settings checklist (leagues, text size)
 src/HelpOverlay.qml     the shortcut sheet
 tests/                  tests for backend, theme, translator
 pkgbuild/               PKGBUILD, desktop entry, icon

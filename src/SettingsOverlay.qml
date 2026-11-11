@@ -48,7 +48,7 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    text: qsTr("Sports and leagues")
+                    text: qsTr("Settings")
                     color: theme.foreground
                     font.pixelSize: theme.fsSubtitleLarge
                     font.bold: true

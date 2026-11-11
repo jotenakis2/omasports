@@ -1471,11 +1471,12 @@ private slots:
         QVERIFY(main.contains("qsTr(\"d live\")"));
         QVERIFY(main.contains("qsTr(\"c standings\")"));
         QVERIFY(main.contains("qsTr(\"a upcoming\")"));
-        QVERIFY(main.contains("qsTr(\"p / s settings\")"));
+        QVERIFY(main.contains("qsTr(\"p settings\")"));
         QVERIFY(main.contains("qsTr(\"? help\")"));
         QVERIFY(main.contains("sequences: [\"j\", \"Shift+J\"]"));
         QVERIFY(main.contains("sequences: [\"p\", \"Shift+P\"]"));
         QVERIFY(main.contains("sequences: [\"q\", \"Shift+Q\"]"));
+        QVERIFY(!main.contains("sequences: [\"s\", \"Shift+S\"]"));
         QVERIFY(!main.contains("sequence: \"J\""));
 
         QFile helpFile(QStringLiteral(SRCDIR "/../src/HelpOverlay.qml"));
@@ -1486,8 +1487,18 @@ private slots:
         const QString help = QString::fromUtf8(helpFile.readAll());
         QVERIFY(help.contains("{ keys: \"j / k\""));
         QVERIFY(help.contains("{ keys: \"h / l\""));
-        QVERIFY(help.contains("{ keys: \"p / s\""));
+        QVERIFY(help.contains("{ keys: \"p\""));
+        QVERIFY(!help.contains("{ keys: \"p / s\""));
         QVERIFY(help.contains("{ keys: \"q\""));
+
+        QFile settingsFile(QStringLiteral(SRCDIR "/../src/SettingsOverlay.qml"));
+        if (!settingsFile.open(QIODevice::ReadOnly | QIODevice::Text))
+            settingsFile.setFileName(QStringLiteral("src/SettingsOverlay.qml"));
+        QVERIFY2(settingsFile.isOpen() || settingsFile.open(QIODevice::ReadOnly | QIODevice::Text),
+                 "cannot open SettingsOverlay.qml");
+        const QString settings = QString::fromUtf8(settingsFile.readAll());
+        QVERIFY(settings.contains("qsTr(\"Settings\")"));
+        QVERIFY(!settings.contains("qsTr(\"Sports and leagues\")"));
     }
 
     void upcomingScheduleFiltersSortsAndGroups()
