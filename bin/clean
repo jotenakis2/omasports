@@ -1,0 +1,12 @@
+#!/bin/sh
+# shellcheck enable=all
+set -eu
+
+ROOT="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)"
+
+rm -rf \
+  "${ROOT}/build" \
+  "${ROOT}/build-x86_64" \
+  "${ROOT}/dist"
+
+printf 'Supprimé: build/, build-x86_64/, dist/\n'

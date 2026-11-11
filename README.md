@@ -101,7 +101,11 @@ bin/build        # qmake6 + make into build/omasports
 bin/build-x86_64 # x86_64 binary in build-x86_64/omasports
 bin/test         # Qt Test suite, offscreen
 ./check.sh       # shellcheck (bin/*, check.sh), compilation, puis tests offscreen
+bin/clean        # supprime build/, build-x86_64/ et dist/
 ```
+
+Après un build local, lancer `bin/clean` pour ne rien laisser en local : les
+archives distributables doivent provenir de la CI, pas de la machine.
 
 `bin/build-x86_64` builds natively on an x86_64 host. From an aarch64 host it
 uses an x86_64 Arch container through podman and writes
@@ -130,7 +134,7 @@ ESPN's sport and league slugs. Its scoreboard lives at
 ## Layout
 
 ```text
-bin/build  bin/build-x86_64  bin/test  bin/install
+bin/build  bin/build-x86_64  bin/test  bin/install  bin/clean
 src/main.cpp            application setup
 src/backend.{h,cpp}     catalog, scores, live scan, league filter, settings
 src/theme.{h,cpp}       Omarchy palette and Hyprland rounding

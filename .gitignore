@@ -1,5 +1,6 @@
 /build/
 /build-x86_64/
+/dist/
 /pkgbuild/pkg/
 /pkgbuild/src/
 *.pkg.tar.*
