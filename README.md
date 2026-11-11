@@ -5,7 +5,7 @@ English | [Français](README.fr.md)
 **Version 1.0.0** — Live scores and fixtures for every sport, in one window, from the keyboard.
 Native Qt Quick desktop app for Linux that follows your Omarchy theme and language.
 
-![omasports showing NBA results](screenshot.png)
+![omasports showing Premier League results](screenshot.png)
 
 ## What it does
 

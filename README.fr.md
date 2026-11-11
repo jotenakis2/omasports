@@ -5,7 +5,7 @@
 **Version 1.0.0** — Scores et calendriers de tous les sports, dans une seule fenêtre, au clavier.
 Application de bureau Qt Quick native pour Linux qui suit le thème et la langue d'Omarchy.
 
-![omasports affichant les résultats NBA](screenshot.png)
+![omasports affichant les résultats de Premier League](screenshot.png)
 
 ## Ce que fait l'application
 
