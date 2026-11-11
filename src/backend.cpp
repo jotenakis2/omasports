@@ -819,7 +819,7 @@ void Backend::fetchMatch()
 
     QNetworkRequest request(url);
     request.setTransferTimeout(15000);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/1.0");
 
     QNetworkReply *reply = m_network.get(request);
     m_matchPending = reply;
@@ -998,7 +998,7 @@ void Backend::refresh()
                                    league.value("league").toString(), date());
     QNetworkRequest request(url);
     request.setTransferTimeout(15000);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+    request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/1.0");
 
     QNetworkReply *reply = m_network.get(request);
     m_pending = reply;
@@ -1105,7 +1105,7 @@ void Backend::startLiveRequests()
         const LiveTask task = m_liveQueue.takeFirst();
         QNetworkRequest request(task.url);
         request.setTransferTimeout(15000);
-        request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+        request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/1.0");
 
         QNetworkReply *reply = m_network.get(request);
         m_liveReplies.insert(reply);
@@ -1275,7 +1275,7 @@ void Backend::fetchStandings()
             const QUrl url = standingsUrlForSeason(sport, leagueSlug, season);
             QNetworkRequest request(url);
             request.setTransferTimeout(15000);
-            request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+            request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/1.0");
 
             QNetworkReply *reply = m_network.get(request);
             m_pending = reply;
@@ -1318,7 +1318,7 @@ void Backend::fetchStandings()
     const QUrl sbUrl = scoreboardUrl(sport, leagueSlug, date());
     QNetworkRequest sbRequest(sbUrl);
     sbRequest.setTransferTimeout(15000);
-    sbRequest.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+    sbRequest.setHeader(QNetworkRequest::UserAgentHeader, "omasports/1.0");
     QNetworkReply *sbReply = m_network.get(sbRequest);
     m_pending = sbReply;
     connect(sbReply, &QNetworkReply::finished, this, [this, sbReply, runCandidates] {
@@ -1569,7 +1569,7 @@ void Backend::fetchUpcoming(bool force)
             ++m_upcomingPending;
             QNetworkRequest request(task.url);
             request.setTransferTimeout(15000);
-            request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/0.1");
+            request.setHeader(QNetworkRequest::UserAgentHeader, "omasports/1.0");
             QNetworkReply *reply = m_network.get(request);
             m_upcomingReplies.insert(reply);
             connect(reply, &QNetworkReply::finished, this, [this, reply, key = task.key, finalize] {

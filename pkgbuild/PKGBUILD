@@ -1,5 +1,5 @@
 pkgname=omasports
-pkgver=0.1.0
+pkgver=1.0.0
 pkgrel=1
 pkgdesc='Live scores and fixtures for every sport'
 arch=('x86_64' 'aarch64')
